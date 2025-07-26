@@ -2668,4 +2668,213 @@ sample estimates:
 mean in group North mean in group South 
              791.65               80.10
 
+# 5 IBD
+
+# Load libraries
+
+```{r}
+library(ggplot2)
+library(dartRverse)
+```
+
+# Isolation by distance
+
+Isolation by distance analysis based on a mantel test. Euclidean and genetic distance matrix are calculated (currently only pairwise Fst between population is implemented by default).
+
+```{r}
+ibd <- gl.ibd(ak.gen)
+```
+
+```{r}
+# Save the plot
+ggsave("C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/ibd.pdf", plot = ibd, width = 8, height = 4)
+```
+
+
+# IBD all populations
+
+Distances between all populations via sea were measured with Google Earth Pro and pairwise Fst values entered into a csv file called "IBD_ak.gen".
+
+```{r}
+ibd<- read.csv("IBD_ak.gen.csv")
+```
+
+```{r}
+# plot shows correlation between all populations
+ibd.plot <- ggplot(ibd, aes(x=Dist, y=Fst)) +     # fill = Pop
+            geom_point(aes(colour = Pop), show.legend = TRUE) +
+            scale_color_manual(values=c('blue','brown', 'orange')) +
+            geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
+            labs(x = "Geographic distance (km)") +
+            labs(y = "Genetic distance (Fst)") +
+            theme_classic()
+
+png(file="C:/Users/sandr/OneDrive - James Cook University/DarT/R/Output files/ibdplot_feb25.png",
+width=600, height=400)
+
+ibd.plot
+```
+
+```{r}
+summary(lm(ibd$Fst ~ ibd$Dist))
+```
+
+# IBD inter-population
+
+```{r}
+ibd_inter<- read.csv("IBD_ak.gen.csv")
+```
+
+```{r}
+ibd_inter <- filter(ibd_inter, Pop == "Interpopulation")
+
+print(ibd_inter)
+```
+
+```{r}
+# plot shows correlation between populations between Maggie and adjacent only (Inter-population), and distinguishes between northern and southern bays at Maggie 
+ibd_inter.plot <- ggplot(ibd_inter, aes(x=Dist, y=Fst)) +     # fill = Pop
+            geom_point(aes(colour = Orientation), show.legend = TRUE) +
+            scale_color_manual(values=c('blue', 'orange')) +
+            geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
+            labs(x = "Geographic distance (km)") +
+            labs(y = expression("Genetic distance (F"["ST"]*")")) +
+            theme_classic()
+
+png(file="C:/Users/sandr/OneDrive - James Cook University/DarT/R/Output files/ibd_inter_feb25.png",
+width=600, height=400)
+
+ibd_inter.plot
+```
+
+```{r}
+# plot shows correlation between populations between Maggie and adjacent only (Inter-population), and distinguishes between northern and southern bays at Maggie, and which bays at Maggie correlate to adjacent populations
+ibd_inter_bays.plot <- ggplot(ibd_inter, aes(x=Dist, y=Fst)) +
+  geom_point(aes(colour = Bay, shape = Orientation), show.legend = TRUE) +  # Add shape aesthetic
+  scale_color_manual(values = c('blue', 'orange', "red", "green", "yellow", "black", "brown")) +
+  scale_shape_manual(values = c('North' = 22, 'South' = 16)) +  # Adjust shape values here
+  geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
+  labs(x = "Geographic distance (km)") +
+  labs(y = expression("Genetic distance (F"["ST"]*")")) +
+  theme_classic()
+
+png(file="C:/Users/sandr/OneDrive - James Cook University/DarT/R/Output files/ibd_inter_bays_feb25.png",
+width=600, height=400)
+
+ibd_inter_bays.plot
+```
+
+```{r}
+summary(lm(ibd_inter$Fst ~ ibd_inter$Dist))
+```
+
+
+# IBD intra-population Magnetic Island
+
+```{r}
+ibd_intra<- read.csv("IBD_ak.gen.csv")
+```
+
+```{r}
+ibd_intra_mag <- filter(ibd_intra, Pop == "Magnetic")
+
+print(ibd_intra_mag)
+```
+
+```{r}
+# plot shows correlation between populations at Magnetic Island
+ibd_intra_mag.plot <- ggplot(ibd_intra_mag, aes(x=Dist, y=Fst)) +     # fill = Pop
+            geom_point(aes()) +
+            geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
+            labs(x = "Geographic distance (km)") +
+            labs(y = expression("Genetic distance (F"["ST"]*")")) +
+            theme_classic()
+
+png(file="C:/Users/sandr/OneDrive - James Cook University/DarT/R/Output files/ibd_intra_mag_feb25.png",
+width=600, height=400)
+
+ibd_intra_mag.plot
+```
+
+```{r}
+# plot shows correlation between populations at Maggie (Magnetic population), and shows correlations between northern only and southern bays only at Maggie, and shows which northern bays at Maggie correlate to southern populations and vice versa (inter).
+ibd_intra_mag_bays.plot <- ggplot(ibd_intra_mag, aes(x=Dist, y=Fst)) +
+  geom_point(aes(colour = Orientation), show.legend = TRUE) +  # Add shape aesthetic
+  scale_color_manual(values = c('blue', "red", "black")) +
+  #scale_shape_manual(values = c('North' = 22, 'South' = 16)) +  # Adjust shape values here
+  geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
+  labs(x = "Geographic distance (km)") +
+  labs(y = expression("Genetic distance (F"["ST"]*")")) +
+  theme_classic()
+
+png(file="C:/Users/sandr/OneDrive - James Cook University/DarT/R/Output files/ibd_intra_mag_bays_feb25.png",
+width=600, height=400, dpi=600)
+
+ibd_intra_mag_bays.plot
+```
+
+```{r}
+summary(lm(ibd_inter_mag$Fst ~ ibd_inter_mag$Dist))
+```
+
+
+# IBD intra-population Adjacent
+
+```{r}
+ibd_intra<- read.csv("IBD_ak.gen.csv")
+```
+
+```{r}
+ibd_intra_adj <- filter(ibd_inter, Pop == "Adjacent")
+
+print(ibd_intra_adj)
+```
+
+```{r}
+# plot shows correlation between populations at adjacent populations (Adjacent population)
+ibd_intra_adj.plot <- ggplot(ibd_intra_adj, aes(x=Dist, y=Fst)) + 
+            geom_point(aes()) +
+            geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
+            labs(x = "Geographic distance (km)") +
+            labs(y = expression("Genetic distance (F"["ST"]*")")) +
+            theme_classic()
+
+png(file="C:/Users/sandr/OneDrive - James Cook University/DarT/R/Output files/ibd_intra_adj_feb25.png",
+width=600, height=400)
+
+ibd_intra_adj.plot
+```
+
+# IBD intra-population Maggie and Adjacent
+
+```{r}
+ibd_intra<- read.csv("IBD_ak.gen.csv")
+```
+
+```{r}
+ibd_intra_mag_adj <- filter(ibd_intra, Pop == "Adjacent" | Pop =="Magnetic")
+
+print(ibd_intra_mag_adj)
+```
+
+```{r}
+# plot shows correlation between populations at adjacent populations only (Adjacent population) between populations at Magnetic populations only (Magnetic population)
+ibd_intra_mag_adj.plot <- ggplot(ibd_intra_mag_adj, aes(x=Dist, y=Fst)) +     # fill = Pop
+            geom_point(aes(colour = Pop), show.legend = TRUE) +
+            scale_color_manual(values=c('blue', 'orange')) +
+            geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
+            labs(x = "Geographic distance (km)") +
+            labs(y = expression("Genetic distance (F"["ST"]*")")) +
+            theme_classic()
+
+png(file="C:/Users/sandr/OneDrive - James Cook University/DarT/R/Output files/ibd_intra_mag_adj_feb25.png",
+width=600, height=400)
+
+ibd_intra_mag_adj.plot
+```
+
+```{r}
+summary(lm(ibd_intra_mag_adj$Fst ~ ibd_intra_mag_adj$Dist))
+```
+
 
