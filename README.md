@@ -2800,7 +2800,7 @@ ibd_intra_mag.plot
 # plot shows correlation between populations at Maggie (Magnetic population), and shows correlations between northern only and southern bays only at Maggie, and shows which northern bays at Maggie correlate to southern populations and vice versa (inter).
 ibd_intra_mag_bays.plot <- ggplot(ibd_intra_mag, aes(x=Dist, y=Fst)) +
   geom_point(aes(colour = Orientation), show.legend = TRUE) +  # Add shape aesthetic
-  scale_color_manual(values = c('blue', "red", "black")) +
+  scale_color_manual(values = c('darkgreen', "red", "black")) +
   #scale_shape_manual(values = c('North' = 22, 'South' = 16)) +  # Adjust shape values here
   geom_smooth(method = "lm", se = FALSE, col = "black", linewidth = 0.6) +
   labs(x = "Geographic distance (km)") +
