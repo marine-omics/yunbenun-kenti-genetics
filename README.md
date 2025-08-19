@@ -2585,11 +2585,17 @@ ne
 ```
 
 ```{r}
+# Keep only rows where condition equals "No_S"
+ne_noS <- ne %>% 
+  filter(condition == "No_S")
+```
+
+```{r}
 # plot shows correlation between all populations
-ne.plot <- ggplot(ne, aes(x=Population, y=value, fill=condition)) +
+ne.plot <- ggplot(ne_noS, aes(x=Population, y=value, fill=Population)) +
             geom_bar(position="dodge", stat="identity") +
             theme_classic() +
-           scale_fill_manual(values=c('blue','orange'))
+           scale_fill_manual(values=c('orange', 'blue','blue'))
      #       labs(x = "Geographic distance (km)") +
       #      labs(y = "Genetic distance (Fst)")
 
@@ -2639,8 +2645,14 @@ ne.no.so
 ```
 
 ```{r}
+# Keep only rows where condition equals "No_S"
+ne.no.so_noS <- ne.no.so %>% 
+  filter(condition == "No_S")
+```
+
+```{r}
 # plot shows correlation between all populations
-ne.no.so.plot <- ggplot(ne.no.so, aes(x=Population, y=value, fill=condition)) +
+ne.no.so.plot <- ggplot(ne.no.so_noS, aes(x=Population, y=value, fill=Population)) +
             geom_bar(position="dodge", stat="identity") +
             theme_classic() +
            scale_fill_manual(values=c('darkgreen','red'))
