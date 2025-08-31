@@ -1,0 +1,112 @@
+---
+title: "Remove replicated (clonal) individuals"
+author: "Sandra Erdmann"
+format: gfm
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+execute:
+  freeze: auto
+---
+
+## Load Libraries
+
+```{r}
+library(ggplot2)      # to plot results
+library(ggpubr)       # to use ggarrange and other plotting functions
+library(gridExtra)    # to use grid.arrange
+library(cowplot)      # to use plot_grid and ggdraw
+library(tidyr)        # general functions
+library(dartRverse)
+```
+
+```{r}
+load("cache/ak.filtered.rdata")
+```
+
+## Identify close relatives/replicates
+
+Identify close relatives with a percentage of 99% similarity in their genotypes.
+
+From the dartr manual
+
+> Ideally, in a large dataset with related and unrelated individuals and several replicated individuals, the first histogram should have four "peaks". The first peak should represent unrelated individuals, the second peak should correspond to second-degree relationships (such as cousins), the third peak should represent first-degree relationships (like parent/offspring and full siblings), and the fourth peak should represent replicated individuals.
+
+> In order to ensure that replicated individuals are properly identified, it's important to have a clear separation between the third and fourth peaks in the second histogram. This means that there should be bins with zero counts between these two peaks.
+
+Note that replicated coral colonies could arise due to asexual reproduction (fragmentation) or simply because the same colony was inadvertently sampled twice.
+
+```{r}
+# Inspect the number of replicates
+ak9.filtered.rep <- dartR.base::gl.report.replicates(ak.filtered, perc_geno=0.99)
+
+il <- c("At_11_J20", "A154", "A24", "At_9_J20", "B9", "At_29_J20", "At_8_J20", "At_7_J20", "A99", "At_34_N", "At_4_F", "At_41_J20", "At_58_F20", "At_6_N", "A11", "A25", "A8", "GB_03/03/2022_17", "HB_4", "MR_14/03/2022_12", "MR_14/03/2022_13", "MR_14/03/2022_8", "PB_05/04/22_45", "WB_03/04/2022_14")
+
+# This list is not the same as the list inferred by gl.report.replicates
+
+setdiff(il,ak9.filtered.rep$ind.list.drop)
+setdiff(ak9.filtered.rep$ind.list.drop,il)
+```
+
+Drop these 24 individuals: "At_11_J20", "A154", "A24", "At_9_J20", "B9", "At_29_J20", "At_8_J20", "At_7_J20", "A99", "At_34_N", "At_4_F", "At_41_J20", "At_58_F20", "At_6_N", "A11", "A25", "A8", "GB_03/03/2022_17" "HB_4", "MR_14/03/2022_12" "MR_14/03/2022_13", "MR_14/03/2022_8", "PB_05/04/22_45", "WB_03/04/2022_14"
+
+## Remove replicates
+
+Close relatives (with a percentage of 99% similarity in their genotypes) were identified using gl.report.replicates and will be removed from this dataset.
+
+Drop individuals from the replicates function:
+
+```{r}
+ak.filtered.nr <- gl.drop.ind(ak.filtered, ind.list=c("At_11_J20", "A154", "A24", "At_9_J20", "B9", "At_29_J20", "At_8_J20", "At_7_J20", "A99", "At_34_N", "At_4_F", "At_41_J20", "At_58_F20", "At_6_N", "A11", "A25", "A8", "GB_03/03/2022_17", "HB_4", "MR_14/03/2022_12", "MR_14/03/2022_13", "MR_14/03/2022_8", "PB_05/04/22_45", "WB_03/04/2022_14"))
+
+# Should be
+#ak.filtered.nr <- gl.drop.ind(ak.filtered, ind.list=ak9.filtered.rep$ind.list.drop)
+```
+
+```{r}
+# Filter for monomorphs
+ak.filtered.nr <- gl.filter.monomorphs(ak.filtered.nr)
+```
+
+```{r}
+# Recalculate locus metrics
+ak.filtered.nr <- gl.recalc.metrics(ak.filtered.nr)
+```
+
+```{r}
+nInd(ak.filtered.nr)
+nLoc(ak.filtered.nr)
+```
+
+```{r}
+gl.smearplot(ak.filtered.nr)
+```
+
+## Remove missing loci
+
+A DArT dataset will not have individuals for which the calls are scored as missing (NA) across all loci, but such individuals may sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions
+
+```{r}
+# Filter for missing loci
+ak.pop <-gl.filter.allna(ak.filtered.nr)
+```
+
+## Inspect filtered file
+
+```{r}
+nInd(ak.pop)
+nLoc(ak.pop)
+```
+
+```{r}
+table(pop(ak.pop))
+```
+
+```{r}
+indNames(ak.pop)
+```
+
+```{r}
+save(ak.pop, file="cache/ak.pop.rdata")
+```
+
