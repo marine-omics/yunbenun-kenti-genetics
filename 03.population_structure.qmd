@@ -37,42 +37,48 @@ nInd(ak.filtered.nr)
 nLoc(ak.filtered.nr)
 ```
 
-TODO: Add details of how structure was run here
+Structure was then run for K = 1, 2, 3 and 4.  Each run used 20000 MCMC iterations with 10000 additional as burn-in. Full parameter files can be found in `structure`
 
-## Admixture plot for ak.pop
-
-### Load csv
-
-Added the location to csv, so it is possible to group by location for plots.
+To determine the appropriate value of K we plot K vs the likelihood
 
 ```{r}
+k_vs_lik <- read_table("structure/k_vs_lik.txt",col_names = c("k","logLik"))
+ggplot(k_vs_lik,aes(x=k,y=logLik)) + geom_point() + geom_line()
+```
+
+Although the highest likelihood is achieved for a model with K=3 this is only marginally better than K=2.  This also matches results seen in PCA where we can see a very clear separation between two populations (see below).  In such situations the structure manual (and occam's razor) suggests that the smaller K is more appropriate, especially since mild deviations from the model assumed by structure tends to lead to an overestimation of K.
+
+## Admixture plot for K=2
+
+Read assignment probabilities for individuals from the run with K=2. 
+
+```{r, warning=FALSE}
 # Load csv with data from run # 12 in the structure analysis
-run12 <-  read.csv("ak.pop_run12.csv")
+run12 <-  read_table("structure/ak.structure.nr.k2.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2"),skip = 2) #%>% 
+  select(ID=Label,C1,C2) %>% # Select only useful columns
+  pivot_longer(-ID,names_to = "cluster",values_to = "p") # Put assignment probabilities into a single column
 ```
 
+Join structure data with sample metadata
+
 ```{r}
-head(run12)
+metadata <- read_csv("ind_metrics_SNP2.csv") %>% 
+  mutate(ID = case_when(
+    id=="20" ~ "WB_36",
+    .default = id
+  )) %>% 
+  select(-id)
+
+run12_meta <- run12 %>% 
+  left_join(metadata,by="ID")
 ```
 
-### Data wrangling
-
-For the plots to show both clusters the matrix needs to be amended.
+Create a stacked barplot to show admixture proportions
 
 ```{r}
-# Create 2 rows per ID for each cluster, assign the fst value and arrange by ID
-run12<-run12 %>% gather(key="cluster", value = "fst", c(-ID, -loc)) %>% arrange(ID)
-```
+ggplot(run12_meta, aes(x = ID, y = p, fill=cluster)) +
+   geom_col(position="stack", stat = "identity")
 
-```{r}
-head(run12)
-```
-
-For a first glimpse, create a barplot that shows the bays on the x-axis, fst on y-axis and all 4 clusters stacked.
-
-```{r}
-strrun12 <- ggplot(run12, aes(x = ID, y = fst, fill=cluster)) +
-   geom_bar(position="stack", stat = "identity", width=0.2)
-strrun12
 ```
 
 For a more detailed investigation into single bays, select the location from the dataset and make subsets for all locations ("HFB", "WB", "MB", "HB", "GB", "PB", "MR", "HaR", "SO", "LPB", "WP", "EP", "BRR", "JB", "KR")
