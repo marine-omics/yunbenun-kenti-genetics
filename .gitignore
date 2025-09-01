@@ -1,6 +1,9 @@
 cache
 unused
 raw_data
+dart2vcf
+relatedness
+structure
 .Rproj.user
 .Rhistory
 .RData

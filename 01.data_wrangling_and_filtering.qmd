@@ -391,3 +391,36 @@ ak.filtered$ind.names
 # Save filtered and clean dataset
 save(ak.filtered, file="cache/ak.filtered.rdata")
 ```
+
+## Create a vcf file using identical filters to dartR
+
+This conversion is done using bash scripts in the `dart2vcf` directory. These scripts require a list of loci and individuals remaining after our dart filtering process so we export those here.
+
+```{r}
+write.table(ak.filtered$loc.names,file = "dart2vcf/ak.filtered.loci",row.names = FALSE,quote = FALSE)
+write.table(ak.filtered$ind.names,file = "dart2vcf/ak.filtered.ind",row.names = FALSE,quote = FALSE,col.names = FALSE)
+```
+
+The dart2vcf script is then run against the Acropora kenti genome, aligning dart tags to the genome and using this to obtain genomic coordinates for all tags.
+
+```bash
+cd dart2vcf
+./dart2vcf.py -g aten_final_0.11.fasta ../raw_data/Report_DAc23-8597_5_moreOrders_SNP_2.csv > 8597.vcf 2>8597.err
+```
+
+This process results in a loss of around 10% of loci (50323 of 55247), mostly because they cannot be mapped to the genome.  Thus the vcf file will have slighly fewer loci than the genlight object used by dartR. 
+
+After performing the conversion we extract a subset corresponding to the same SNPs and individuals as `ak.filtered`
+
+```bash
+# Sanitize loci because dartR changes them from the original
+#
+cat ak.filtered.loci| sed 's/-/_/' | sed 's:/:>:' | sed 's/-/:/' | sed 's/_/|F|0--/'  > tmp.loci 
+
+# Retains 4919 of the original 5276 loci
+bcftools filter -i "ID=@tmp.loci" 8597.vcf.gz -Oz > 8597.1.vcf.gz
+
+# Retains all 465 samples
+bcftools view -S ak.filtered.ind 8597.1.vcf.gz -Oz > ak.filtered.vcf.gz
+```
+

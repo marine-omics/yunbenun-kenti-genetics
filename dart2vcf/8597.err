@@ -1,0 +1,18 @@
+INFO:root:Skipped 6 header lines. Samples start at column 24
+INFO:root:Specified a genome. Will write sequences to seqs.fasta
+WARNING:root:Ref and Snp AlleleSequences are identical for 68348220|F|0--25:C>G skipping this SNP
+WARNING:root:Ref and Snp AlleleSequences are identical for 15481086|F|0--35:C>G skipping this SNP
+WARNING:root:Ref and Snp AlleleSequences are identical for 11489312|F|0--67:A>C skipping this SNP
+WARNING:root:Ref and Snp AlleleSequences are identical for 17480637|F|0--63:T>A skipping this SNP
+WARNING:root:Ref and Snp AlleleSequences are identical for 15474328|F|0--65:G>T skipping this SNP
+WARNING:root:Ref and Snp AlleleSequences are identical for 15474328|F|0--63:A>G skipping this SNP
+ERROR:root:Reported SNP position 64 does not match actual snp positions in AlleleSequence at [49] skipping this SNP
+WARNING:root:Ref and Snp AlleleSequences are identical for 100239607|F|0--68:C>G skipping this SNP
+INFO:root:Mapping sequences with bwa
+INFO:root:[M::bwa_idx_load_from_disk] read 0 ALT contigs
+INFO:root:[M::process] read 55193 sequences (3576057 bp)...
+INFO:root:[M::mem_process_seqs] Processed 55193 reads in 2.581 CPU sec, 2.619 real sec
+INFO:root:[main] Version: 0.7.19-r1273
+INFO:root:[main] CMD: bwa mem ../../sunny_dart/vcfconvert/aten_final_0.11.fasta seqs.fasta
+INFO:root:[main] Real time: 3.752 sec; CPU: 2.739 sec
+INFO:root:Retained 50323 of 55247 loci. 52 with duplicate mappings. 4872 unmapped. 0 skipped due to complex CIGAR strings

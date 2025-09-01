@@ -1,6 +1,6 @@
 ---
 title: "Remove replicated (clonal) individuals"
-author: "Sandra Erdmann"
+author: "Sandra Erdmann and Ira Cooke"
 format: gfm
 editor: visual
 editor_options: 
@@ -12,12 +12,10 @@ execute:
 ## Load Libraries
 
 ```{r}
-library(ggplot2)      # to plot results
-library(ggpubr)       # to use ggarrange and other plotting functions
-library(gridExtra)    # to use grid.arrange
-library(cowplot)      # to use plot_grid and ggdraw
-library(tidyr)        # general functions
 library(dartRverse)
+library(tidyverse)
+library(ggraph)
+library(igraph)
 ```
 
 ```{r}
@@ -26,41 +24,99 @@ load("cache/ak.filtered.rdata")
 
 ## Identify close relatives/replicates
 
-Identify close relatives with a percentage of 99% similarity in their genotypes.
+Accurate identification of clones and close relatives relies on estimates of population allele frequencies.  From past studies we can assume that there is strong population structure dividing two main populations.  We therefore perform an initial structure analysis to assign individuals to these populations for the purposes of calculating relatedness statistics. 
 
-From the dartr manual
+```{r, eval=FALSE}
+gl2structure(ak.filtered, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.filtered.str", outpath = "structure", verbose = NULL)
+```
+Then run structure as follows
 
-> Ideally, in a large dataset with related and unrelated individuals and several replicated individuals, the first histogram should have four "peaks". The first peak should represent unrelated individuals, the second peak should correspond to second-degree relationships (such as cousins), the third peak should represent first-degree relationships (like parent/offspring and full siblings), and the fourth peak should represent replicated individuals.
-
-> In order to ensure that replicated individuals are properly identified, it's important to have a clear separation between the third and fourth peaks in the second histogram. This means that there should be bins with zero counts between these two peaks.
-
-Note that replicated coral colonies could arise due to asexual reproduction (fragmentation) or simply because the same colony was inadvertently sampled twice.
-
-```{r}
-# Inspect the number of replicates
-ak9.filtered.rep <- dartR.base::gl.report.replicates(ak.filtered, perc_geno=0.99)
-
-il <- c("At_11_J20", "A154", "A24", "At_9_J20", "B9", "At_29_J20", "At_8_J20", "At_7_J20", "A99", "At_34_N", "At_4_F", "At_41_J20", "At_58_F20", "At_6_N", "A11", "A25", "A8", "GB_03/03/2022_17", "HB_4", "MR_14/03/2022_12", "MR_14/03/2022_13", "MR_14/03/2022_8", "PB_05/04/22_45", "WB_03/04/2022_14")
-
-# This list is not the same as the list inferred by gl.report.replicates
-
-setdiff(il,ak9.filtered.rep$ind.list.drop)
-setdiff(ak9.filtered.rep$ind.list.drop,il)
+```bash
+structure -K 2 -L 5275 -N 465  -m ak.mainparams.txt -i ak.filtered.str -o ak.structure.k2.out
 ```
 
-Drop these 24 individuals: "At_11_J20", "A154", "A24", "At_9_J20", "B9", "At_29_J20", "At_8_J20", "At_7_J20", "A99", "At_34_N", "At_4_F", "At_41_J20", "At_58_F20", "At_6_N", "A11", "A25", "A8", "GB_03/03/2022_17" "HB_4", "MR_14/03/2022_12" "MR_14/03/2022_13", "MR_14/03/2022_8", "PB_05/04/22_45", "WB_03/04/2022_14"
-
-## Remove replicates
-
-Close relatives (with a percentage of 99% similarity in their genotypes) were identified using gl.report.replicates and will be removed from this dataset.
-
-Drop individuals from the replicates function:
+Read back the structure results and create tables assigning individuals to one of the two populations
 
 ```{r}
-ak.filtered.nr <- gl.drop.ind(ak.filtered, ind.list=c("At_11_J20", "A154", "A24", "At_9_J20", "B9", "At_29_J20", "At_8_J20", "At_7_J20", "A99", "At_34_N", "At_4_F", "At_41_J20", "At_58_F20", "At_6_N", "A11", "A25", "A8", "GB_03/03/2022_17", "HB_4", "MR_14/03/2022_12", "MR_14/03/2022_13", "MR_14/03/2022_8", "PB_05/04/22_45", "WB_03/04/2022_14"))
+structure_ak_filtered <- read_table("structure/ak.structure.k2.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2"),skip = 2)
 
-# Should be
-#ak.filtered.nr <- gl.drop.ind(ak.filtered, ind.list=ak9.filtered.rep$ind.list.drop)
+# C2 is Maggie, C1 is Palms
+
+maggie_ind <- structure_ak_filtered %>% 
+  filter(C2>0.5) %>% pull(Label)
+palms_ind <- structure_ak_filtered %>% 
+  filter(C1>0.5) %>% pull(Label)
+
+write.table(maggie_ind,file = "relatedness/maggie_ind.txt",row.names = FALSE,col.names = FALSE, quote = FALSE)
+write.table(palms_ind,file = "relatedness/palms_ind.txt",row.names = FALSE,col.names = FALSE, quote = FALSE)
+```
+
+
+Next we use the program `vcftools` to calculate relatedness for Maggie and Palms individuals separately (see scripts in directory `relatedness`)
+
+```bash
+vcftools --vcf 8597.f7.vcf --relatedness2 --keep maggie_ancestry.tsv --out 8597.maggie_ancestry
+vcftools --vcf 8597.f7.vcf --relatedness2 --keep palms_ancestry.tsv --out 8597.palms_ancestry
+```
+
+```{r}
+palms_rel <- read_tsv("relatedness/ak.filtered.palms_ancestry.relatedness2") %>% 
+  filter(INDV1 != INDV2) %>% add_column(pop="palms")
+
+maggie_rel <- read_tsv("relatedness/ak.filtered.maggie_ancestry.relatedness2") %>% 
+  filter(INDV1 != INDV2) %>% add_column(pop="maggie")
+
+all_rel <- rbind(palms_rel,maggie_rel)
+```
+
+Relatedness numbers don't conform to ideal expectations.  There are a lot of negative values which is probably due to additional population structure within palms/maggie.  Nevertheless we can see a main peak around 0 which represents the bulk of individuals which are probably unrelated.  Highly related individuals and potential clones show up as an additional peak above relatedness values around 0.25. In both plots this peak is quite distinct from the bulk of sample pairs.
+
+```{r}
+all_rel %>% 
+  ggplot(aes(x=RELATEDNESS_PHI)) + geom_histogram(aes(fill=pop),binwidth = 0.05) + scale_y_log10() + facet_wrap(~pop)
+```
+
+Next we plot relationships among highly related individuals as a graph.  This is because not all such highly related groups are pairs.  Sometimes there are more than 2 individuals within a clonal cluster.  We need to identify these clusters so that we can pick one representative from each
+
+```{r}
+rel_connected <- all_rel %>% 
+  filter(RELATEDNESS_PHI>0.25)
+
+rel_graph <- graph_from_data_frame(rel_connected)
+ggraph(rel_graph) + geom_edge_link() + geom_node_point(color="red")
+```
+
+This gives a total of 54 individuals in 25 clusters. In order to pick a representative from each of these clusters we need to calculate missingness for all samples which we do using vcftools
+
+```bash
+vcftools --gzvcf ak.filtered.vcf.gz --missing-indv --out ak.filtered
+```
+
+```{r}
+ak.filtered.imiss <- read_tsv("relatedness/ak.filtered.imiss")
+```
+
+Joining missingness information with cluster membership allows us to identify representatives of each cluster and then make a list of all other individuals which will need to be removed from further analysis
+
+```{r}
+representative_samples <- data.frame(cluster=components(rel_graph)$membership) %>% rownames_to_column("INDV") %>% 
+  left_join(ak.filtered.imiss) %>% 
+  group_by(cluster) %>% 
+  slice_min(F_MISS,n=1) %>% 
+  pull(INDV)
+
+excluded_samples <- setdiff(rel_connected$INDV1,representative_samples)  
+
+excluded_samples %>% 
+  as.data.frame() %>% 
+  write_tsv(file = "relatedness/excluded_relatives.tsv",col_names = FALSE)
+```
+
+
+## Create new genlight object with replicates/clones removed
+
+```{r}
+ak.filtered.nr <- gl.drop.ind(ak.filtered, excluded_samples)
 ```
 
 ```{r}
@@ -86,6 +142,8 @@ gl.smearplot(ak.filtered.nr)
 
 A DArT dataset will not have individuals for which the calls are scored as missing (NA) across all loci, but such individuals may sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions
 
+In this case there are no such individuals
+
 ```{r}
 # Filter for missing loci
 ak.pop <-gl.filter.allna(ak.filtered.nr)
@@ -107,6 +165,6 @@ indNames(ak.pop)
 ```
 
 ```{r}
-save(ak.pop, file="cache/ak.pop.rdata")
+save(ak.filtered.nr, file="cache/ak.filtered.nr.rdata")
 ```
 

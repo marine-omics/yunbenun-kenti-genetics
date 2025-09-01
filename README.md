@@ -2,6 +2,6 @@
 
 
 - [Data wrangling and filtering](01.data_wrangling_and_filtering.qmd)
-- [Remove replicated (clonal) individuals](02.remove_clones.qmd)
+- [Remove replicated and highly related individuals](02.remove_clones.qmd)
 
 
