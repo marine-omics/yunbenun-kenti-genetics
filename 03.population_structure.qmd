@@ -20,28 +20,21 @@ library(tidyr)        # general functions
 library(dartRverse)
 ```
 
-
-
-
-
 ```{r}
-load("cache/ak.pop.rdata")
+load("cache/ak.filtered.nr.rdata")
 ```
-
-
-
 
 ## Convert to structure
 
-Convert ak.pop to structure format to run externally with structure program
+Convert `ak.filtered.nr` to structure format to run externally with structure program
 
 ```{r}
-gl2structure(ak.pop, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.pop.str", outpath = "structure", verbose = NULL)
+gl2structure(ak.filtered.nr, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.filtered.nr.str", outpath = "structure", verbose = NULL)
 ```
 
 ```{r}
-nInd(ak.pop)
-nLoc(ak.pop)
+nInd(ak.filtered.nr)
+nLoc(ak.filtered.nr)
 ```
 
 TODO: Add details of how structure was run here
