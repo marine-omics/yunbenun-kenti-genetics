@@ -9,6 +9,11 @@ execute:
   freeze: auto
 ---
 
+```{r}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+
 # Description
 
 The dataset analysed in the following script is from this publication: Erdmann et al., 2025. Population structure of Acropora kenti at inshore reefs of the Great Barrier Reef. Molecular Ecology.

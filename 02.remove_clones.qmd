@@ -12,6 +12,7 @@ execute:
 ## Load Libraries
 
 ```{r}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
 library(dartRverse)
 library(tidyverse)
 library(ggraph)

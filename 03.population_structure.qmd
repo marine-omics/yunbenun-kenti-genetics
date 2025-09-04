@@ -12,12 +12,16 @@ execute:
 ## Load Libraries
 
 ```{r}
-library(ggplot2)      # to plot results
-library(ggpubr)       # to use ggarrange and other plotting functions
-library(gridExtra)    # to use grid.arrange
-library(cowplot)      # to use plot_grid and ggdraw
-library(tidyr)        # general functions
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+
+library(tidyverse)
 library(dartRverse)
+library(ggpubr)
+library(sf)
+library(ozmaps)
+source("constants.R")
+
+options(readr.show_col_types = FALSE)
 ```
 
 ```{r}
@@ -28,7 +32,7 @@ load("cache/ak.filtered.nr.rdata")
 
 Convert `ak.filtered.nr` to structure format to run externally with structure program
 
-```{r}
+```{r, eval=FALSE}
 gl2structure(ak.filtered.nr, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.filtered.nr.str", outpath = "structure", verbose = NULL)
 ```
 
@@ -39,14 +43,31 @@ nLoc(ak.filtered.nr)
 
 Structure was then run for K = 1, 2, 3 and 4.  Each run used 20000 MCMC iterations with 10000 additional as burn-in. Full parameter files can be found in `structure`
 
-To determine the appropriate value of K we plot K vs the likelihood
+Determining the appropriate value of K is tricky.  The structure manual recommends care is taken, and that the lowest biologically sensible value is used.  A more objective method of [Evanno 2005](https://app.paperpile.com/view/plain/?id=8d8f1080-2416-4bb5-97a5-504b82a919d7) involves taking the second derivative of the log Likelihood.  This method suggests that K=2 is optimal. 
+
 
 ```{r}
-k_vs_lik <- read_table("structure/k_vs_lik.txt",col_names = c("k","logLik"))
-ggplot(k_vs_lik,aes(x=k,y=logLik)) + geom_point() + geom_line()
+llpaths <- list.files("structure","k_vs_lik.txt",recursive = TRUE,full.names = TRUE)
+reps <- llpaths %>% str_extract("([0-9]+)")
+
+read_loglik <- function(path,n){
+  read_table(path,col_names = c("k","logLik"))  %>%  
+    mutate(Ldash = logLik - lag(logLik,1)) %>% 
+    mutate(deltaL = lead(Ldash) - Ldash) %>% 
+    add_column(rep=n)
+}
+
+
+lldata <- map2(llpaths,reps,read_loglik) %>% 
+  list_rbind()
+
+lldata %>% 
+  group_by(k) %>% 
+  summarise(deltaK = mean(abs(deltaL))/var(logLik)) %>% 
+  ggplot(aes(x=k,y=deltaK)) + 
+    geom_point() + geom_line() + xlab("Number of clusters, K") + ylab("L''")
 ```
 
-Although the highest likelihood is achieved for a model with K=3 this is only marginally better than K=2.  This also matches results seen in PCA where we can see a very clear separation between two populations (see below).  In such situations the structure manual (and occam's razor) suggests that the smaller K is more appropriate, especially since mild deviations from the model assumed by structure tends to lead to an overestimation of K.
 
 ## Admixture plot for K=2
 
@@ -54,8 +75,11 @@ Read assignment probabilities for individuals from the run with K=2.
 
 ```{r, warning=FALSE}
 # Load csv with data from run # 12 in the structure analysis
-run12 <-  read_table("structure/ak.structure.nr.k2.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2"),skip = 2) #%>% 
-  select(ID=Label,C1,C2) %>% # Select only useful columns
+run12_samples <- read_table("structure/ak.filtered.nr.samples.txt",col_names = c("ID"))
+
+run12 <-  read_table("structure/ak.structure.nr.k2.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2"),skip = 2) %>% 
+  cbind(run12_samples) %>% 
+  select(ID,C1,C2) %>% # Select only useful columns
   pivot_longer(-ID,names_to = "cluster",values_to = "p") # Put assignment probabilities into a single column
 ```
 
@@ -73,497 +97,132 @@ run12_meta <- run12 %>%
   left_join(metadata,by="ID")
 ```
 
+
+In order to make sense of population structure it is useful to visualise sampling locations on a map
+
+```{r}
+sites_data <- run12_meta %>% 
+  group_by(pop,lat,lon) %>% 
+  summarise(n_samples = n()/2) %>% 
+  mutate(name = location_names[pop])
+```
+
+
+```{r, include=FALSE}
+gbr_coast <- st_read("maps/GBR_NESP-TWQ-5/BaseLayers/",layer = "GBR_coastlineONLY")
+gbr_tc <- st_read("maps/GBR_NESP-TWQ-5/BaseLayers/",layer = "GBR_towncities")
+gbr_features <- st_read("maps/GBR_NESP-TWQ-5/BaseLayers/",layer = "TS_AIMS_NESP_Torres_Strait_Features_V1b_with_GBR_Features")
+
+sf_use_s2(FALSE) # the input geometries are bad, and wrong spherically
+x1 <- st_make_valid(gbr_features)
+
+xmn=146.0
+ymn=-19.3
+xmx=146.9
+ymx=-18.35
+
+gbr_ft_cropped <- st_crop(x1, xmin = xmn, ymin = ymn, xmax = xmx, ymax = ymx) #%>% filter(LEVEL_1=="Island")
+gbr_coast_cropped <- st_crop(gbr_coast,xmin = xmn, ymin = ymn, xmax = xmx, ymax = ymx)
+
+projcrs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+sites_sf <- st_as_sf(sites_data,coords = c("lon", "lat"),crs = projcrs)
+
+sf_oz <- ozmap("states")
+```
+
+
+```{r}
+ggplot() + 
+  geom_sf(data = gbr_ft_cropped %>% filter(LEVEL_1=="Island")) +
+  geom_sf(data = gbr_coast_cropped) +
+  geom_sf(data = sites_sf,color="blue") + 
+  ggrepel::geom_text_repel(data = sites_sf, mapping = aes(label=name, geometry=geometry), stat = "sf_coordinates",size=3) + 
+  xlab("") + ylab("")
+```
+
+From this plot we can devise a rough north-south ordering for our locations.  This will help when plotting admixture results
+
+```{r}
+location_order <- 1:15
+names(location_order) <- c("BRR","EP","WP","LPB","SO","JB","KR","HaR","HFB","WB","MB","HB","GB","PB","MR")
+```
+
+
+
 Create a stacked barplot to show admixture proportions
 
 ```{r}
-ggplot(run12_meta, aes(x = ID, y = p, fill=cluster)) +
-   geom_col(position="stack", stat = "identity")
-
+run12_meta %>% 
+  mutate(pop_order = location_order[pop]) %>% 
+  ggplot(aes(x = ID, y = p)) +
+  scale_fill_manual(values = cluster_colors) +
+  geom_col(aes(fill=cluster),position="stack", stat = "identity",width = 1,linewidth=0) +
+  facet_grid(cols=vars(reorder(pop,pop_order)),scales = "free", space = "free") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + 
+  theme(strip.text = element_text(size=6)) +
+  xlab("Sample ID") + ylab("Admixture Proportion")
+ggsave("figures/admixture_all.png",width = 3200,height = 800,units = "px")
 ```
 
-For a more detailed investigation into single bays, select the location from the dataset and make subsets for all locations ("HFB", "WB", "MB", "HB", "GB", "PB", "MR", "HaR", "SO", "LPB", "WP", "EP", "BRR", "JB", "KR")
-
-```{r}
-HFBrun12 <-run12[grep("^HFB", run12$loc), ] 
-HFBrun12
-```
-
-```{r}
-WBrun12<-run12[grep("^WB", run12$ID), ]
-WBrun12
-```
-
-```{r}
-MBrun12<-run12[grep("^MB", run12$ID), ]   
-MBrun12
-```
-
-```{r}
-HBrun12<-run12[grep("^HB", run12$ID), ]
-HBrun12
-```
-
-```{r}
-GBrun12<-run12[grep("^GB", run12$ID), ]
-GBrun12
-```
-
-```{r}
-PBrun12<-run12[grep("^PB", run12$ID), ]
-PBrun12
-```
-
-```{r}
-MRrun12<-run12[grep("^MR", run12$ID), ]
-MRrun12
-```
-
-```{r}
-HaRrun12<-run12[grep("^HaR", run12$ID), ]   
-HaRrun12
-```
-
-```{r}
-SOrun12 <-run12[grep("^SO", run12$loc), ] 
-SOrun12
-```
-
-```{r}
-LPBrun12 <-run12[grep("^LPB", run12$loc), ]  
-LPBrun12
-```
-
-```{r}
-WPrun12 <-run12[grep("^WP", run12$loc), ] 
-WPrun12
-```
-
-```{r}
-EPrun12 <-run12[grep("^EP", run12$loc), ] 
-EPrun12
-```
-
-```{r}
-BRRrun12<-run12[grep("^BRR", run12$ID), ]     #  samples
-BRRrun12
-```
-
-```{r}
-JBrun12<-run12[grep("^JB", run12$ID), ]  
-JBrun12
-```
-
-```{r}
-KRrun12<-run12[grep("^KR", run12$ID), ] 
-KRrun12
-```
-
-### Plot
+For a more detailed investigation into single bays, we generate individual plots for each location and save into `figures`.  
 
 ```{r}
 # Assign a certain colour to the clusters, so that cluster1 is consistently blue and cluster2 orange
 cluster_colors <- c("orange", "blue")
-```
 
-Make a plot for all locations ("HFB", "WB", "MB", "HB", "GB", "PB", "MR", "HaR", "SO", "LPB", "WP", "EP", "BRR", "JB", "KR").
-
-```{r}
-HFB12 <- ggplot(HFBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
+admix_plot_pop <- function(popdata,suffix="12",cluster_colors=c("orange", "blue")){
+  # popdata will be a named vector with length 1.  We can get the name code and use this to look up the title
+  code <- names(popdata)
+  title <- location_names[code]
+  
+  p <- ggplot(popdata[[1]], aes(x = ID, y = p, fill = cluster)) +
+  geom_bar(position="stack", stat = "identity") +
   scale_fill_manual(values = cluster_colors) +
    theme_classic() +
   theme(axis.text.x = element_text(angle = 90)) +
   font("x.text", size = 8) +
     labs(y = "admixture proportions") +
-  ggtitle("Huntingfield Bay")
+    ggtitle(title)
+  
+  path <- paste("figures/",code,suffix,".png",sep="")
+  ggsave(path,p,width = 1600,height = 800, units = "px")
+  p
+}
 
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/HFB12.png",
-width=800, height=400)
-
-HFB12
+# Use lmap to iterate over all pops and run the plotting function on each
+admix_plots_by_pop <- run12_meta %>% 
+  split(run12_meta$pop) %>% 
+  lmap(admix_plot_pop)
 ```
 
-```{r}
-WB12 <- ggplot(WBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-    theme_classic() +
-    theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-  ggtitle("Wilson Bay")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/WB12.png",
-width=800, height=400)
-
-WB12
-```
-
-```{r}
-MB12 <- ggplot(MBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-   theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Maud Bay")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/MB12.png",
-width=800, height=400)
-
-MB12
-```
-
-```{r}
-HB12 <- ggplot(HBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-    theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-  ggtitle("Horseshoe Bay")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/HB12.png",
-width=800, height=400)
-
-HB12
-```
-
-```{r}
-GB12 <- ggplot(GBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Geoffrey Bay")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/GB12.png",
-width=800, height=400)
-
-GB12
-```
-
-```{r}
-PB12 <- ggplot(PBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position = "stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Picnic Bay")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/PB12.png",
-width=800, height=400)
-
-PB12
-```
-
-```{r}
-MR12 <- ggplot(MRrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position = "stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Middle Reef")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/MR12.png",
-width=800, height=400)
-
-MR12
-```
-
-```{r}
-HaR12 <- ggplot(HaRrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors)  +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Havannah Reef")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/HaR12.png",
-width=800, height=400)
-
-HaR12
-```
-
-```{r}
-SO12 <- ggplot(SOrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("South Orpheus")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/SO12.png",
-width=800, height=400)
-
-SO12
-```
-
-```{r}
-LPB12 <- ggplot(LPBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Little Pioneer Bay")
-
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/LPB12.png",
-width=800, height=400)
-
-LPB12
-```
-
-```{r}
-WP12 <- ggplot(WPrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-      ggtitle("West Pelorus")
-
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/WP12.png",
-width=800, height=400)
-
-WP12
-```
-
-```{r}
-EP12 <- ggplot(EPrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-     ggtitle("East Pelorus")
-
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/EP12.png",
-width=800, height=400)
-
-EP12
-```
-
-```{r}
-BRR12 <- ggplot(BRRrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Bramble Reef")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/BRR12.png",
-width=800, height=400)
-
-BRR12
-```
-
-```{r}
-JB12 <- ggplot(JBrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("John Brewer Reef")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/JB12.png",
-width=800, height=400)
-
-JB12
-```
-
-```{r}
-KR12 <- ggplot(KRrun12, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Keeper Reef")
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/KR12.png",
-width=800, height=400)
-
-KR12
-```
-
-Combine all structure plots into one plot.
-
-```{r}
-# Combine all Magnetic Island subpopulations
-# Remove both x and y axis elements (including labels, ticks, and lines) from all but the first column and combine all plots
-strmag12_combined <- ggarrange(
-  HFB12 + theme(axis.title.x = element_blank(),
-                axis.text.x = element_blank(),
-                axis.ticks.x = element_blank(),
-                axis.title.y = element_blank(),
-                axis.text.y = element_blank(),
-                axis.ticks.y = element_blank()),  # Remove both axes
-  WB12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  MB12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  HB12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  GB12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  PB12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  MR12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  ncol = 2, nrow = 4,
-  widths = c(1, 1),
-  heights = c(1, 1),
-  legend = "none"
-)
-
-# Add a common y-axis label using cowplot::plot_grid()
-strmag12_labeled <- plot_grid(
-  ggdraw() + 
-    draw_label("Admixture proportions", angle = 90, size = 15, vjust = 0.5),
-  strmag12_combined,
-  ncol = 2,
-  rel_widths = c(0.05, 1)  # 5% for label, 95% for plot
-)
-
-# Save the plot
-ggsave("C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures//strmag12.pdf", plot = strmag12_labeled, width = 8, height = 10)
-```
-
-```{r}
-# Combine all adjacent reef populations
-# Remove both x and y axis elements (including labels, ticks, and lines) from all but the first column and combine all plots
-stradj12_combined <- ggarrange(
-  HaR12 + theme(axis.title.x = element_blank(),
-                axis.text.x = element_blank(),
-                axis.ticks.x = element_blank(),
-                axis.title.y = element_blank(),
-                axis.text.y = element_blank(),
-                axis.ticks.y = element_blank()),  # Remove both axes
-  SO12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  LPB12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  WP12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  EP12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  BRR12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  JB12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  KR12 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  ncol = 2, nrow = 4,
-  widths = c(1, 1),
-  heights = c(1, 1),
-  legend = "none"
-)
-
-# Add a common y-axis label using cowplot::plot_grid()
-stradj12_labeled <- plot_grid(
-  ggdraw() + 
-    draw_label("Admixture proportions", angle = 90, size = 15, vjust = 0.5),
-  stradj12_combined,
-  ncol = 2,
-  rel_widths = c(0.05, 1)  # 5% for label, 95% for plot
-)
-
-# Save the plot
-ggsave("C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures//stradj12.pdf", plot = stradj12_labeled, width = 8, height = 10)
-```
 
 # Fine-scale population structure for Magnetic Island
 
-## Remove migrants
+## Remove migrants and highly admixed individuals
 
-For fine scale structure at Magnetic Island migrants from adjacent reefs will be removed to create a subset only for the Magnetic Island population called ak.pop.nm.mag
+For fine scale structure at Magnetic Island migrants and highly admixed individuals from adjacent reefs will be removed to create a subset only for the Magnetic Island population called ak.pop.nm.mag.  This is because those individuals are likely to distort any estimates of location population structure (ie due to restricted gene flow) by introducing a different process (admixture with a highly diverged population). 
+
+On this basis we want to keep individuals within the Magnetic Island locations (ie "HFB","WB","MB","HB","GB","PB","MR" ) and where the proportion of the opposing cluster (ie C1) is more than 5%.
 
 ```{r}
-# Get names for all individuals
-indNames(ak.pop)
+maggie_admixed_and_migrants <- run12_meta %>% 
+  filter(pop %in% maggie_sites) %>% 
+  filter(cluster=="C1") %>% 
+  filter(p>0.05) %>% 
+  pull(ID)
+
+# And do the same for adjacent reef populations
+adjacent_admixed_and_migrants <- run12_meta %>% 
+  filter(!(pop %in% maggie_sites)) %>% 
+  filter(cluster=="C2") %>% 
+  filter(p>0.05) %>% 
+  pull(ID)
 ```
 
-The following migrants, which have allele frequency differences \>0.5, have been identified with structure plots: HB: 1, 2, 14, 20, 21, 2021_11 WB: 8, 25, 37 HFB: 4, 6, 9, 10, 22 HaR: 7, 10, 12, 24, 43
-
 ```{r}
-# Remove 19 migrants with a proportion >5%
-ak.pop.nm <- gl.drop.ind(ak.pop, ind.list=c("HB_1", "HB_2", "HB_27/11/21_11", "HB_27/11/21_14", "HB_27/11/21_20", "HB_27/11/21_21", "WB_03/04/2022_8", "WB_03/04/2022_25", "WB_03/04/2022_37", "HFB_4", "HFB_6", "HFB_9", "HFB_10", "HFB_22", "HaR_06/05/2022_7", "HaR_06/05/2022_10", "HaR_06/05/2022_12", "HaR_06/05/2022_24", "HaR_06/05/2022_43"))
+# Remove migrant and admixed individuals across the entire dataset
+ak.pop.nm <- gl.drop.ind(ak.filtered.nr, ind.list=c(maggie_admixed_and_migrants,adjacent_admixed_and_migrants))
 ```
 
 ```{r}
@@ -595,7 +254,7 @@ gl.smearplot(ak.pop.nm)
 ```
 
 ```{r}
-save(ak.pop.nm, file="ak.pop.nm.rdata")
+save(ak.pop.nm, file="cache/ak.pop.nm.rdata")
 ```
 
 ## Keep only Magnetic Island subpopulations
@@ -606,285 +265,95 @@ indNames(ak.pop.nm)
 
 ```{r}
 # Keep only subpopulations from Magnetic Island for fine structure analysis
-ak.pop.mag <- gl.keep.pop(ak.pop.nm, pop.list = list("GB", "HB", "HFB", "MB", "MR", "PB", "WB"))
+ak.pop.nm.mag <- gl.keep.pop(ak.pop.nm, pop.list = list("GB", "HB", "HFB", "MB", "MR", "PB", "WB"))
 ```
 
 ```{r}
-save(ak.pop.mag, file="ak.pop.mag.rdata")
+save(ak.pop.nm.mag, file="cache/ak.pop.nm.mag.rdata")
 ```
 
 ```{r}
-nInd(ak.pop.mag)
-nLoc(ak.pop.mag)
+nInd(ak.pop.nm.mag)
+nLoc(ak.pop.nm.mag)
 ```
 
 ## Convert to structure
 
-Convert ak.pop.mag to structure format to run externally with structure program
+Convert ak.pop.nm.mag to structure format to run externally with structure program
 
 ```{r}
-gl2structure(ak.pop.mag, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.pop.mag.str", outpath = NULL, verbose = NULL)
+gl2structure(ak.pop.nm.mag, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.pop.mag.nm.str", outpath = "structure", verbose = NULL)
 ```
 
 ```{r}
-nInd(ak.pop.mag)
-nLoc(ak.pop.mag)
+nInd(ak.pop.nm.mag)
+nLoc(ak.pop.nm.mag)
 ```
+
+
 
 ## Admixture plot for ak.pop.nm.mag
 
+Calculating BIC for each model as before we see that K=1 is the most preferred model. Nevertheless, we check K=2 just in case this shows any indication of structure related to bays or north/south distinction on Magnetic Island.
+
+```{r}
+llpaths_mag <- list.files("structure","k_vs_lik_mag.txt",recursive = TRUE,full.names = TRUE)
+reps_mag <- llpaths_mag %>% str_extract("([0-9]+)")
+
+# read_loglik <- function(path,n){
+#   read_table(path,col_names = c("k","logLik"))  %>%  
+#     mutate(Ldash = logLik - lag(logLik,1)) %>% 
+#     mutate(deltaL = lead(Ldash) - Ldash) %>% 
+#     add_column(rep=n)
+# }
+
+
+lldata_mag <- map2(llpaths_mag,reps_mag,read_loglik) %>% 
+  list_rbind()
+
+lldata_mag %>% 
+  group_by(k) %>% 
+  summarise(deltaK = mean(abs(deltaL))/var(logLik)) %>% 
+  ggplot(aes(x=k,y=deltaK)) + 
+    geom_point() + geom_line() + xlab("Number of clusters, K") + ylab("L''")
+```
+
 ### Load csv
 
-Added the location to csv, so it is possible to group by location for plots.
+
+```{r, warning=FALSE}
+samples10 <- read_table("structure/ak.pop.mag.nm.samples.txt",col_names = c("ID"))
+
+run10 <- read_table("structure/ak.pop.mag.nm.k3.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2","C3"),skip = 2) %>% 
+  cbind(samples10) %>% 
+  select(ID,starts_with("C")) %>% # Select only useful columns
+  pivot_longer(-ID,names_to = "cluster",values_to = "p") %>% 
+  left_join(metadata,by="ID")
+```
+For a first glimpse, create a barplot that shows the bays on the x-axis, admixture proportion on y-axis and all clusters stacked.
 
 ```{r}
-# Load csv with data from run # 12 in the structure analysis
-run10 <-  read.csv("ak.pop.nm.mag_run10.csv")
+
+run10 %>% 
+  mutate(pop_order = location_order[pop]) %>% 
+  ggplot(aes(x = ID, y = p)) +
+  geom_col(aes(fill=cluster),position="stack", stat = "identity",width = 1,linewidth=0) +
+  facet_grid(cols=vars(reorder(pop,pop_order)),scales = "free", space = "free") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + 
+  theme(strip.text = element_text(size=6)) +
+  xlab("Sample ID") + ylab("Admixture Proportion")
+ggsave("figures/admixture_all.png",width = 3200,height = 800,units = "px")
+
 ```
+
+Plots for individual bays are saved into the figures folder
 
 ```{r}
-head(run10)
+# Use lmap to iterate over all pops and run the plotting function on each
+admix_plots_by_pop10 <- run10 %>% 
+  split(run10$pop) %>% 
+  lmap(admix_plot_pop,"10",cluster_colors = c(cluster_colors,"cyan","purple"))
 ```
 
-### Data wrangling
 
-For the plots to show both clusters the matrix needs to be amended.
 
-```{r}
-# Create 2 rows per ID for each cluster, assign the fst value and arrange by ID
-run10<-run10 %>% gather(key="cluster", value = "fst", c(-ID, -loc)) %>% arrange(ID)
-```
-
-```{r}
-head(run10)
-```
-
-For a first glimpse, create a barplot that shows the bays on the x-axis, fst on y-axis and all 4 clusters stacked.
-
-```{r}
-strrun10 <- ggplot(run10, aes(x = ID, y = fst, fill=cluster)) +
-   geom_bar(position="stack", stat = "identity", width=0.2)
-strrun10
-```
-
-For a more detailed investigation into single bays, select the location from the dataset and make subsets for all locations ("HFB", "WB", "MB", "HB", "GB", "PB", "MR").
-
-```{r}
-HFBrun10 <-run10[grep("^HFB", run10$loc), ] 
-HFBrun10
-```
-
-```{r}
-WBrun10<-run10[grep("^WB", run10$ID), ]
-WBrun10
-```
-
-```{r}
-MBrun10<-run10[grep("^MB", run10$ID), ]   
-MBrun10
-```
-
-```{r}
-HBrun10<-run10[grep("^HB", run10$ID), ]
-HBrun10
-```
-
-```{r}
-GBrun10<-run10[grep("^GB", run10$ID), ]
-GBrun10
-```
-
-```{r}
-PBrun10<-run10[grep("^PB", run10$ID), ]
-PBrun10
-```
-
-```{r}
-MRrun10<-run10[grep("^MR", run10$ID), ]
-MRrun10
-```
-
-### Plot
-
-```{r}
-# Assign a certain colour to the clusters, so that cluster1 is consistently blue and cluster2 orange
-cluster_colors <- c("blue", "orange")
-```
-
-Make a plot for all locations ("HFB", "WB", "MB", "HB", "GB", "PB", "MR", "HaR", "SO", "LPB", "WP", "EP", "BRR", "JB", "KR").
-
-```{r}
-HFB10 <- ggplot(HFBrun10, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-  ggtitle("Huntingfield Bay") +
-   theme_classic()
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/HFB10.png",
-width=800, height=400)
-
-HFB10
-```
-
-```{r}
-WB10 <- ggplot(WBrun10, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-  ggtitle("Wilson Bay") +
-    theme_classic()
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/WB10.png",
-width=800, height=400)
-
-WB10
-```
-
-```{r}
-MB10 <- ggplot(MBrun10, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Maud Bay") +
-   theme_classic()
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/MB10.png",
-width=800, height=400)
-
-MB10
-```
-
-```{r}
-HB10 <- ggplot(HBrun10, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-  ggtitle("Horseshoe Bay") +
-    theme_classic()
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/HB10.png",
-width=800, height=400)
-HB10
-```
-
-```{r}
-GB10 <- ggplot(GBrun10, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position="stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Geoffrey Bay") +
-  theme_classic()
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/GB10.png",
-width=800, height=400)
-GB10
-```
-
-```{r}
-PB10 <- ggplot(PBrun10, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position = "stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Picnic Bay") +
-  theme_classic()
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/PB10.png",
-width=800, height=400)
-
-PB10
-```
-
-```{r}
-MR10 <- ggplot(MRrun10, aes(x = ID, y = fst, fill = cluster)) +
-   geom_bar(position = "stack", stat = "identity") +
-  scale_fill_manual(values = cluster_colors) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  font("x.text", size = 8) +
-    labs(y = "admixture proportions") +
-    ggtitle("Middle Reef") +
-  theme_classic()
-
-png(file="C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/MR10.png",
-width=800, height=400)
-MR10
-```
-
-Combine all structure plots into one plot.
-
-```{r}
-# Combine all Magnetic Island subpopulations
-# Remove both x and y axis elements (including labels, ticks, and lines) from all but the first column and combine all plots
-strmaggie10_combined <- ggarrange(
-  HFB10 + theme(axis.title.x = element_blank(),
-                axis.text.x = element_blank(),
-                axis.ticks.x = element_blank(),
-                axis.title.y = element_blank(),
-                axis.text.y = element_blank(),
-                axis.ticks.y = element_blank()),  # Remove both axes
-  WB10 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  MB10 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  HB10 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  GB10 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  PB10 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  MR10 + theme(axis.title.x = element_blank(),
-               axis.text.x = element_blank(),
-               axis.ticks.x = element_blank(),
-               axis.title.y = element_blank(),
-               axis.text.y = element_blank(),
-               axis.ticks.y = element_blank()),  # Remove both axes
-  ncol = 2, nrow = 4,
-  widths = c(1, 1),
-  heights = c(1, 1),
-  legend = "none"
-)
-
-# Add a common y-axis label using cowplot::plot_grid()
-strmaggie10_labeled <- plot_grid(
-  ggdraw() + 
-    draw_label("Admixture proportions", angle = 90, size = 15, vjust = 0.5),
-  strmaggie10_combined,
-  ncol = 2,
-  rel_widths = c(0.05, 1)  # 5% for label, 95% for plot
-)
-
-# Save the plot
-ggsave("C:/Users/sandr/Documents/Chapter 1 - Github Script/Figures/strmaggie10.pdf", plot = strmaggie10_labeled, width = 8, height = 10)
-```
