@@ -1,21 +1,33 @@
 ---
 title: "4 Genetic Diversity"
 author: "Sandra Erdmann"
-format: html
+format: gfm
 editor: visual
+editor_options: 
+  chunk_output_type: inline
+execute:
+  freeze: auto
 ---
 
 # Genetic Diversity
 
-Genetic diversity analyses are sensitive to low read depth and losing rare alleles.
+As a starting point for genetic diversity analyses we use the same filtered set of loci as was used for population structure analyses. Specifically; 
 
-Genetic diversity analyses are not very sensitive to - secondaries, because we don't worry about loci that are independently inherited or recombination - missing data and singletons so, no maf filter or imputing
+- Filtered loci are the same because these have already been filtered to ensure that they are as reliable as possible while being mindful to avoid filters that would distort allele frequencies and hence bias genetic diversity estimates. 
+
+- Individuals with admixture proportions that would indicate that they are migrants between MI and "other" populations have been removed.  This is because these these individuals have uncertain origins (ie parents likely from a different reef to where they were found). 
+
+- Highly admixed individuals (admixture proportion > 5%) between the two major lineages in this study (ie Maggie vs surrounding reefs) have been excluded. See note in the section on population structure about this threshold and the relatively small number of individuals it excludes. 
+
+- Individuals that are likely genetic clones or close relatives have been removed as these are undesirable in pretty much all analyses. 
+
+
 
 ## Load Libraries
 
 ```{r}
 library(dartRverse)
-library(dartR)   # to run gl.basic.stats
+#library(dartR)   # to run gl.basic.stats
 library(dartR.base)
 library(hierfstat)        # allelic richness
 library(ggplot2)
@@ -29,15 +41,14 @@ library(ggpubr)       # to use ggarrange
 library(cowplot)      # to use ggdraw
 ```
 
-## Replicates removed
 
-Close relatives (with a percentage of 99% similarity in their genotypes) were identified using gl.report.replicates in script "Population Structure" and were removed from this dataset.
-This dataset was called ak.filtered.nr (nr = no replicates).
+```{r}
+load("cache/ak.pop.nm.rdata")
+```
 
-## Migrants removed 
+## Migrants removed
 
-Migrants were identified via population structure analysis in script "Population Structure" and were removed from this dataset in the script "Relatedness".
-This dataset was called ak.filtered.nr.nm (nr = no replicates, nm = no migrants).
+Migrants were identified via population structure analysis in script "Population Structure" and were removed from this dataset in the script "Relatedness". This dataset was called ak.filtered.nr.nm (nr = no replicates, nm = no migrants).
 
 ## Remove missing loci
 
@@ -47,6 +58,7 @@ A DArT dataset will not have individuals for which the calls are scored all as m
 # Filter for missing loci
 ak.gen <-gl.filter.allna(ak.filtered.nr.nm)
 ```
+
 ## Inspect filtered file
 
 ```{r}
@@ -139,8 +151,7 @@ ak.gen.no.so$ind.names
 
 #### ak.mi.pi.ms
 
-This dataset merges all subpopulations from Magnetic Island into one big population called "mi" (Magnetic Island), all populations from the Palm Islands into "pi" (Palm Islands) and all mid-shelf populations into "ms" (mid-shelf).
-This is used for the Fis calculations per group: Magnetic Island (mi), Palm Island (pi) and mid-shelf reefs (ms).
+This dataset merges all subpopulations from Magnetic Island into one big population called "mi" (Magnetic Island), all populations from the Palm Islands into "pi" (Palm Islands) and all mid-shelf populations into "ms" (mid-shelf). This is used for the Fis calculations per group: Magnetic Island (mi), Palm Island (pi) and mid-shelf reefs (ms).
 
 ```{r}
 ak.gen.mi <- gl.merge.pop(ak.gen, old=c("GB", "HB", "HFB", "MB", "MR", "PB", "WB"), new='MI')
@@ -376,6 +387,7 @@ fst.adj_reord_plot
 ## Boxplot Fst comparisons
 
 ### Boxplot Magnetic Island
+
 ```{r}
 # Boxplot Magnetic Island
 ggplot(fst.mag_reord.df, aes(y = Fst)) +
@@ -387,6 +399,7 @@ ggplot(fst.mag_reord.df, aes(y = Fst)) +
 ```
 
 ### Boxplot adjacent reefs
+
 ```{r}
 # Boxplot adjacent reefs
 ggplot(fst.adj_reord.df, aes(y = Fst)) +
@@ -565,6 +578,7 @@ Fst_signif <- t.test(fst.mag_reord.df$Fst, fst.adj_reord.df$Fst, var.equal = FAL
 # Print the result
 print(Fst_signif)
 ```
+
 Conclusion: Magnetic Island has a mean fst of 0.0052142857, and adjacent reefs have a mean fst of 0.0005071429.
 
 ### North vs South
@@ -576,6 +590,7 @@ Fst_signif_no_vs_so <- t.test(fst.gen.no_reord.df$Fst, fst.gen.so_reord.df$Fst, 
 # Print the result
 print(Fst_signif_no_vs_so)
 ```
+
 Conclusion: Northern bays have mean fst of -0.0008166667, southern bays have higher mean fst of 0.0079000000.
 
 ## Heatmap Euclidean Distance
@@ -671,8 +686,7 @@ print(Ar_signif)
 
 Conclusion:
 
-A very small p-value (typically less than 0.05) suggests strong evidence against the null hypothesis, i.e. there is no difference between the groups. Hence *significant difference*
-95 percent confidence interval does not include 0, hence significant.
+A very small p-value (typically less than 0.05) suggests strong evidence against the null hypothesis, i.e. there is no difference between the groups. Hence *significant difference* 95 percent confidence interval does not include 0, hence significant.
 
 ## Heterozygosity/Fis
 
@@ -692,7 +706,7 @@ cols.mi.adj <- c("blue", "orange")
 het.mi.adj <- gl.report.heterozygosity(ak.gen.mi.adj, method="pop", error.bar = "SE", plot.colors.pop = cols.mi.adj)
 ```
 
-If you want to know how accurately your sample mean represents the population mean, you'd look at the SE, which is is small. 
+If you want to know how accurately your sample mean represents the population mean, you'd look at the SE, which is is small.
 
 ## Significance Testing Fis
 
@@ -721,8 +735,8 @@ Fis_signif <- t.test(het_Fis_mag$FIS, het_Fis_adj$FIS, var.equal = FALSE)
 # Print the result
 print(Fis_signif)
 ```
-Conclusion:
-*not significantly different*
+
+Conclusion: *not significantly different*
 
 ## Significance Testing Ho
 
@@ -733,8 +747,8 @@ Ho_signif <- t.test(het_Fis_mag$Ho, het_Fis_adj$Ho, var.equal = FALSE)
 # Print the result
 print(Ho_signif)
 ```
-Conclusion:
-*not significantly different*
+
+Conclusion: *not significantly different*
 
 ## Significance Testing He
 
@@ -745,8 +759,8 @@ He_signif <- t.test(het_Fis_mag$He, het_Fis_adj$He, var.equal = FALSE)
 # Print the result
 print(He_signif)
 ```
-Conclusion:
-*not significantly different*
+
+Conclusion: *not significantly different*
 
 ## Fixed allelic differences/Private alleles
 
@@ -769,7 +783,7 @@ fd.mi.pi.ms
 
 ### amalgamated pops
 
-*Reran this for Maggie vs Adjacent, because some N are <10!*: no fixed differences detected, only private alleles!
+*Reran this for Maggie vs Adjacent, because some N are \<10!*: no fixed differences detected, only private alleles!
 
 ```{r}
 pa_ak.gen.mi <- gl.report.pa(ak.gen.mi)
@@ -870,8 +884,7 @@ dev.off()
 
 ## PCoA
 
-I think keeping migrants for this analysis is more plausible, since removing them shows better structure, but doesn't reflect the "true" situation.
-PCA's are sensitive to missing data unlike PCoA's. So, I'm running a PCoA.
+I think keeping migrants for this analysis is more plausible, since removing them shows better structure, but doesn't reflect the "true" situation. PCA's are sensitive to missing data unlike PCoA's. So, I'm running a PCoA.
 
 ```{r}
 # Run the PCoA calculations
@@ -973,6 +986,7 @@ dist_matrix_mag <- dist(pcoa.mag$scores)  # uses Euclidean distance
 permanova_result <- adonis2(dist_matrix_mag ~ ak.gen.mag@pop, permutations = 999)
 print(permanova_result)
 ```
+
 Significant difference between subpopulations, but how does it compare between north and south?
 
 ```{r}
@@ -997,6 +1011,7 @@ ak.gen.mag@other$region <- factor(region)
 # Run PERMANOVA with the new region factor
 adonis2(dist_matrix_mag ~ ak.gen.mag@other$region, permutations = 999)
 ```
+
 statistically significant structure between North and South.
 
 ## Ne
@@ -1029,7 +1044,6 @@ ne_noS <- ne %>%
   filter(condition == "No_S")
 ```
 
-
 ```{r}
 # plot shows correlation between all populations
 ne.plot <- ggplot(ne_noS, aes(x=Population, y=value, fill=Population)) +
@@ -1050,28 +1064,27 @@ ne.plot
 anova_ne <- aov(value ~ Population, data = ne)
 summary(anova_ne)
 ```
-            Df Sum Sq Mean Sq F value Pr(>F)  
-Population   2 584566  292283   17.51 0.0222 *
-Residuals    3  50085   16695                 
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+```         
+        Df Sum Sq Mean Sq F value Pr(>F)  
+```
+
+Population 2 584566 292283 17.51 0.0222 *Residuals 3 50085 16695\
+--- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘\*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 ```{r}
 # Run a post-hoc test to see, which group differ significantly
 TukeyHSD(anova_ne)
 ```
-  Tukey multiple comparisons of means
-    95% family-wise confidence level
 
-Fit: aov(formula = value ~ Population, data = ne)
+Tukey multiple comparisons of means 95% family-wise confidence level
 
-$Population
-                                diff        lwr       upr     p adj
-Midshelf reefs-Magnetic Island 504.8  -35.13531 1044.7353 0.0594214
-Palm Islands-Magnetic Island   749.7  209.76469 1289.6353 0.0206869
-Palm Islands-Midshelf reefs    244.9 -295.03531  784.8353 0.2841806
+Fit: aov(formula = value \~ Population, data = ne)
+
+\$Population diff lwr upr p adj Midshelf reefs-Magnetic Island 504.8 -35.13531 1044.7353 0.0594214 Palm Islands-Magnetic Island 749.7 209.76469 1289.6353 0.0206869 Palm Islands-Midshelf reefs 244.9 -295.03531 784.8353 0.2841806
 
 ### Ne Magnetic Island north/south
+
 ```{r}
 # Calculate the population size at northern and southern bays at Magnetic Island
 gl.LDNe(ak.gen.no.so, outfile = "LD_ak.gen.no.so.txt")
@@ -1109,13 +1122,8 @@ ne.no.so.plot
 t.test(value ~ Population, data = ne.no.so, var.equal = TRUE)
 ```
 
-	Two Sample t-test
+```         
+Two Sample t-test
+```
 
-data:  value by Population
-t = 6.7352, df = 2, p-value = 0.02134
-alternative hypothesis: true difference in means between group North and group South is not equal to 0
-95 percent confidence interval:
-  256.9929 1166.1071
-sample estimates:
-mean in group North mean in group South 
-             791.65               80.10
+data: value by Population t = 6.7352, df = 2, p-value = 0.02134 alternative hypothesis: true difference in means between group North and group South is not equal to 0 95 percent confidence interval: 256.9929 1166.1071 sample estimates: mean in group North mean in group South 791.65 80.10

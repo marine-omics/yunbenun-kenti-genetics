@@ -14,6 +14,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FAL
 ```
 
 
+
+
 # Description
 
 The dataset analysed in the following script is from this publication: Erdmann et al., 2025. Population structure of Acropora kenti at inshore reefs of the Great Barrier Reef. Molecular Ecology.
@@ -62,6 +64,8 @@ ak = Acropora kenti SNP dataset ak.filtered = used ak, which has been filtered f
 
 https://green-striped-gecko.github.io/kioloa/install.html
 
+
+
 ```{r, eval=FALSE}
 # Install the necessary bioconductor packages
 install.packages("devtools")
@@ -70,7 +74,6 @@ BiocManager::install("SNPRelate")
 
 # Install dartRverse (dartRverse) & core (dartR.base, dartR.data)
 install.packages("dartRverse")
-library("dartRverse")
 ```
 
 ```{r, eval=FALSE}
@@ -93,15 +96,23 @@ dartRverse_install(package = "dartR.base", rep = "github", branch = "dev")
 dartRverse_install()
 ```
 
+
+
 ## Load library
+
+
 
 ```{r}
 library(dartRverse)
 ```
 
+
+
 # Load and inspect raw dataset
 
 The SNP input dart file is named Report_DAc23-8597_5_moreOrders_SNP_2.csv. The metadata file is called "ind_metrics_SNP2.csv" and contains information for all individuals, such as, ID, name of populations, locations and coordinates of sample locations.
+
+
 
 ```{r}
 # Merge the DartR SNP dataset with the metadata file
@@ -137,7 +148,11 @@ barplot(table(pop(ak)), las=2)
 gl.smearplot(ak)
 ```
 
+
+
 # Assess callrate
+
+
 
 ```{r}
 # Get names of individual samples
@@ -149,9 +164,13 @@ ak$ind.names
 gl.report.callrate(ak, method = "ind", ind.to.list = 528)
 ```
 
+
+
 # Remove duplicates
 
 Remove the following duplicates: At_162_J20.1', 'At_163_J20.1', 'B1', 'A2', 'A3', 'A7', 'B8', 'A9', 'A10', 'B11', 'A15', 'B17', 'B18', 'A19', 'A21', 'WB_03/04/2022_36'
+
+
 
 ```{r}
 
@@ -168,6 +187,8 @@ if (file.exists("cache/ak1.rdata")){
 }
 ```
 
+
+
 # Filtering
 
 ## ak.clean filtering
@@ -183,14 +204,20 @@ Filter dataset for
 7.  secondaries
 8.  missing loci.
 
+
+
 ```{r}
 nInd(ak1)
 nLoc(ak1)
 ```
 
+
+
 ### Reproducibility 0.99
 
 A metrics that investigates if calling a SNP twice results in the same outcome.
+
+
 
 ```{r}
 # Inspect the current reproducibility to remove unreliable loci
@@ -207,9 +234,13 @@ nInd(ak2)
 nLoc(ak2)
 ```
 
+
+
 ### Read depth \>10 \<100
 
 Loci with high (= unreliable) and low read depth (= non-confident) should be removed.
+
+
 
 ```{r}
 # Inspect the current read depth
@@ -226,9 +257,13 @@ nInd(ak3)
 nLoc(ak3)
 ```
 
+
+
 ### Minor allele frequency (maf) 0.005
 
 With approximately 500 individual samples this filter will remove variant loci supported by a minor allele count of just 1 or 2.
+
+
 
 ```{r}
 # Inspect the current minor allele frequency
@@ -245,9 +280,13 @@ nInd(ak4)
 nLoc(ak4)
 ```
 
+
+
 ### Call rate for loci 0.8
 
 Retaining only loci that are consistently called across samples (at least 80%)
+
+
 
 ```{r}
 # Inspect the current call rate for loci
@@ -264,9 +303,13 @@ nInd(ak5)
 nLoc(ak5)
 ```
 
+
+
 ### Call rate for individual 0.75
 
 Most individuals have high callrates (\>80% across all loci) but there is a cluster of very poorly sequenced individuals with low call rates. We remove these individuals from the dataset as they have sequenced poorly.
+
+
 
 ```{r}
 # Inspect the current callrate for individuals
@@ -288,9 +331,13 @@ nInd(ak6)
 nLoc(ak6)
 ```
 
+
+
 ### Monomorphs
 
 This step deletes monomorphic loci from a genlight {adegenet} object. A DArT dataset will not have monomorphic loci, but they can arise, along with loci when populations or individuals are deleted.
+
+
 
 ```{r}
 # Inspect the current number of monomorphs
@@ -307,9 +354,13 @@ nInd(ak7)
 nLoc(ak7)
 ```
 
+
+
 ### Secondaries
 
 Secondaries are fragments with more than one SNP. These multiple SNP loci within a fragment are likely to be linked, and so you may wish to remove secondaries. The filter removes loci that may not be inherited independently. Filtering secondaries at the end of the filtering process ensures that highly quality loci remain in the dataset.
+
+
 
 ```{r}
 # Inspect the current number of secondaries
@@ -326,9 +377,13 @@ nInd(ak8)
 nLoc(ak8)
 ```
 
+
+
 ### Remove missing loci
 
 A DArT dataset will not have individuals for which all calls are scored as missing (NA) across all loci, but such individuals may sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions.
+
+
 
 ```{r}
 # Remove missing loci
@@ -350,7 +405,11 @@ gl.smearplot(ak9)
 ak9 <- gl.recalc.metrics(ak9)
 ```
 
+
+
 # Inspect filtered dataset
+
+
 
 ```{r}
 # A compliance check ensures the dataset has no monomorphic loci, no missing data, properly assigned populations, individual names are unique, coordinates are correct, and recalculates locus metrics.
@@ -398,14 +457,20 @@ ak.filtered$ind.names
 save(ak.filtered, file="cache/ak.filtered.rdata")
 ```
 
+
+
 ## Create a vcf file using identical filters to dartR
 
 This conversion is done using bash scripts in the `dart2vcf` directory. These scripts require a list of loci and individuals remaining after our dart filtering process so we export those here.
+
+
 
 ```{r}
 write.table(ak.filtered$loc.names,file = "dart2vcf/ak.filtered.loci",row.names = FALSE,quote = FALSE)
 write.table(ak.filtered$ind.names,file = "dart2vcf/ak.filtered.ind",row.names = FALSE,quote = FALSE,col.names = FALSE)
 ```
+
+
 
 The dart2vcf script is then run against the Acropora kenti genome, aligning dart tags to the genome and using this to obtain genomic coordinates for all tags.
 
@@ -429,4 +494,5 @@ bcftools filter -i "ID=@tmp.loci" 8597.vcf.gz -Oz > 8597.1.vcf.gz
 # Retains all 465 samples
 bcftools view -S ak.filtered.ind 8597.1.vcf.gz -Oz > ak.filtered.vcf.gz
 ```
+
 

@@ -25,14 +25,15 @@ load("cache/ak.filtered.rdata")
 
 ## Identify close relatives/replicates
 
-Accurate identification of clones and close relatives relies on estimates of population allele frequencies.  From past studies we can assume that there is strong population structure dividing two main populations.  We therefore perform an initial structure analysis to assign individuals to these populations for the purposes of calculating relatedness statistics. 
+Accurate identification of clones and close relatives relies on estimates of population allele frequencies. From past studies we can assume that there is strong population structure dividing two main populations. We therefore perform an initial structure analysis to assign individuals to these populations for the purposes of calculating relatedness statistics.
 
 ```{r, eval=FALSE}
 gl2structure(ak.filtered, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.filtered.str", outpath = "structure", verbose = NULL)
 ```
+
 Then run structure as follows
 
-```bash
+``` bash
 structure -K 2 -L 5275 -N 465  -m ak.mainparams.txt -i ak.filtered.str -o ak.structure.k2.out
 ```
 
@@ -55,10 +56,9 @@ write.table(maggie_ind,file = "relatedness/maggie_ind.txt",row.names = FALSE,col
 write.table(palms_ind,file = "relatedness/palms_ind.txt",row.names = FALSE,col.names = FALSE, quote = FALSE)
 ```
 
-
 Next we use the program `vcftools` to calculate relatedness for Maggie and Palms individuals separately (see scripts in directory `relatedness`)
 
-```bash
+``` bash
 vcftools --gzvcf ak.filtered.vcf.gz --relatedness2 --keep maggie_ind.txt --out ak.filtered.maggie_ancestry
 vcftools --gzvcf ak.filtered.vcf.gz --relatedness2 --keep palms_ind.txt --out ak.filtered.palms_ancestry
 ```
@@ -73,14 +73,14 @@ maggie_rel <- read_tsv("relatedness/ak.filtered.maggie_ancestry.relatedness2") %
 all_rel <- rbind(palms_rel,maggie_rel)
 ```
 
-Relatedness numbers don't conform to ideal expectations.  There are a lot of negative values which is probably due to additional population structure within palms/maggie.  Nevertheless we can see a main peak around 0 which represents the bulk of individuals which are probably unrelated.  Highly related individuals and potential clones show up as an additional peak above relatedness values around 0.25. In both plots this peak is quite distinct from the bulk of sample pairs.
+Relatedness numbers don't conform to ideal expectations. There are a lot of negative values which is probably due to additional population structure within palms/maggie. Nevertheless we can see a main peak around 0 which represents the bulk of individuals which are probably unrelated. Highly related individuals and potential clones show up as an additional peak above relatedness values around 0.25. In both plots this peak is quite distinct from the bulk of sample pairs.
 
 ```{r}
 all_rel %>% 
   ggplot(aes(x=RELATEDNESS_PHI)) + geom_histogram(aes(fill=pop),binwidth = 0.05) + scale_y_log10() + facet_wrap(~pop)
 ```
 
-Next we plot relationships among highly related individuals as a graph.  This is because not all such highly related groups are pairs.  Sometimes there are more than 2 individuals within a clonal cluster.  We need to identify these clusters so that we can pick one representative from each
+Next we plot relationships among highly related individuals as a graph. This is because not all such highly related groups are pairs. Sometimes there are more than 2 individuals within a clonal cluster. We need to identify these clusters so that we can pick one representative from each
 
 ```{r}
 rel_connected <- all_rel %>% 
@@ -92,7 +92,7 @@ ggraph(rel_graph) + geom_edge_link() + geom_node_point(color="red")
 
 This gives a total of 96 individuals in 33 clusters. In order to pick a representative from each of these clusters we need to calculate missingness for all samples which we do using vcftools
 
-```bash
+``` bash
 vcftools --gzvcf ak.filtered.vcf.gz --missing-indv --out ak.filtered
 ```
 
@@ -115,7 +115,6 @@ excluded_samples %>%
   as.data.frame() %>% 
   write_tsv(file = "relatedness/excluded_relatives.tsv",col_names = FALSE)
 ```
-
 
 ## Create new genlight object with replicates/clones removed
 
@@ -171,4 +170,3 @@ indNames(ak.pop)
 ```{r}
 save(ak.filtered.nr, file="cache/ak.filtered.nr.rdata")
 ```
-
