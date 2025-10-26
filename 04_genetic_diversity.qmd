@@ -11,17 +11,15 @@ execute:
 
 # Genetic Diversity
 
-As a starting point for genetic diversity analyses we use the same filtered set of loci as was used for population structure analyses. Specifically; 
+As a starting point for genetic diversity analyses we use the same filtered set of loci as was used for population structure analyses. Specifically;
 
-- Filtered loci are the same because these have already been filtered to ensure that they are as reliable as possible while being mindful to avoid filters that would distort allele frequencies and hence bias genetic diversity estimates. 
+-   Filtered loci are the same because these have already been filtered to ensure that they are as reliable as possible while being mindful to avoid filters that would distort allele frequencies and hence bias genetic diversity estimates.
 
-- Individuals with admixture proportions that would indicate that they are migrants between MI and "other" populations have been removed.  This is because these these individuals have uncertain origins (ie parents likely from a different reef to where they were found). 
+-   Individuals with admixture proportions that would indicate that they are migrants between MI and "other" populations have been removed. This is because these these individuals have uncertain origins (ie parents likely from a different reef to where they were found).
 
-- Highly admixed individuals (admixture proportion > 5%) between the two major lineages in this study (ie Maggie vs surrounding reefs) have been excluded. See note in the section on population structure about this threshold and the relatively small number of individuals it excludes. 
+-   Highly admixed individuals (admixture proportion \> 5%) between the two major lineages in this study (ie Maggie vs surrounding reefs) have been excluded. See note in the section on population structure about this threshold and the relatively small number of individuals it excludes.
 
-- Individuals that are likely genetic clones or close relatives have been removed as these are undesirable in pretty much all analyses. 
-
-
+-   Individuals that are likely genetic clones or close relatives have been removed as these are undesirable in pretty much all analyses.
 
 ## Load Libraries
 
@@ -41,71 +39,8 @@ library(ggpubr)       # to use ggarrange
 library(cowplot)      # to use ggdraw
 ```
 
-
 ```{r}
 load("cache/ak.pop.nm.rdata")
-```
-
-## Migrants removed
-
-Migrants were identified via population structure analysis in script "Population Structure" and were removed from this dataset in the script "Relatedness". This dataset was called ak.filtered.nr.nm (nr = no replicates, nm = no migrants).
-
-## Remove missing loci
-
-A DArT dataset will not have individuals for which the calls are scored all as missing (NA) across all loci, but such individuals may sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions
-
-```{r}
-# Filter for missing loci
-ak.gen <-gl.filter.allna(ak.filtered.nr.nm)
-```
-
-## Inspect filtered file
-
-```{r}
-nInd(ak.gen)
-nLoc(ak.gen)
-```
-
-```{r}
-gl.smearplot(ak.gen)
-```
-
-```{r}
-table(pop(ak.gen))
-```
-
-```{r}
-save(ak.gen, file="ak.gen.rdata")
-```
-
-## Subset dataset
-
-### Magnetic Island
-
-Subset the dataset ak.gen for downstream analysis.
-
-```{r}
-# Select only subpopulations from Magnetic Island
-ak.gen.mag <- gl.keep.pop(ak.gen, pop.list = list("GB", "HB", "HFB", "MB", "MR", "PB", "WB"))
-```
-
-```{r}
-# Filter for monomorphs
-ak.gen.mag <- gl.filter.monomorphs(ak.gen.mag)
-```
-
-```{r}
-# Recalculate locus metrics
-ak.gen.mag <- gl.recalc.metrics(ak.gen.mag)
-```
-
-```{r}
-# Save the dataset
-save(ak.gen.mag, file="C:/Users/sandr/Documents/Chapter 1 - Github Script/ak.gen.mag.rdata")
-```
-
-```{r}
-nInd(ak.gen.mag)
 ```
 
 #### Magnetic Island - North and South

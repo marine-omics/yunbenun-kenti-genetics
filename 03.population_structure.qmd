@@ -1,6 +1,6 @@
 ---
 title: "3 Population structure"
-author: "Sandra Erdmann"
+author: "Sandra Erdmann and Ira Cooke"
 format: gfm
 editor: visual
 editor_options: 
@@ -9,10 +9,9 @@ execute:
   freeze: auto
 ---
 
+```{r, include=FALSE}
 ## Load Libraries
-
-```{r}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
 
 library(tidyverse)
 library(dartRverse)
@@ -21,30 +20,30 @@ library(ggpubr)
 library(sf)
 library(ozmaps)
 source("constants.R")
+library(ggrepel)
 
 options(readr.show_col_types = FALSE)
 ```
 
-```{r}
+For population structure we begin by loading the filtered data with redundant individuals removed.
+
+```{r, echo=TRUE}
 load("cache/ak.filtered.nr.rdata")
 ```
 
-## Convert to structure
+# Analysis of broadscale structure using the full dataset
 
-Convert `ak.filtered.nr` to structure format to run externally with structure program
+We begin by examining the full filtered dataset, including data from both Magnetic Island and adjacent reefs. The data is first converted to structure format to run externally with structure program.
 
-```{r, eval=FALSE}
+```{r, eval=FALSE, echo=TRUE}
 gl2structure(ak.filtered.nr, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.filtered.nr.str", outpath = "structure", verbose = NULL)
 ```
 
-```{r}
-nInd(ak.filtered.nr)
-nLoc(ak.filtered.nr)
-```
+Structure was then run for K = 1, 2, 3 and 4. Each run used 20000 MCMC iterations with 10000 additional as burn-in. Full parameter files can be found in the `structure` folder
 
-Structure was then run for K = 1, 2, 3 and 4. Each run used 20000 MCMC iterations with 10000 additional as burn-in. Full parameter files can be found in `structure`
+Determining the appropriate value of K is tricky. The structure manual recommends a procedure based on finding the maximum likelihood value of K but also notes that care must be taken with this approach and especially cautions against selecting high values of K without a realistic biological explanation.
 
-Determining the appropriate value of K is tricky. The structure manual recommends care is taken, and that the lowest biologically sensible value is used. A more objective method of [Evanno 2005](https://app.paperpile.com/view/plain/?id=8d8f1080-2416-4bb5-97a5-504b82a919d7) involves taking the second derivative of the log Likelihood. This method suggests that K=2 is optimal.
+We employed the more objective method developed by [Evanno 2005](doi.org/10.1111/j.1365-294X.2005.02553.x) which involves taking the second derivative of the log Likelihood to calculate a statistic which they refer to as $\Delta K$. This method shows a very clear result, with the maximum value of $\Delta K$ achieved for $K=2$.
 
 ```{r}
 llpaths <- list.files("structure","k_vs_lik.txt",recursive = TRUE,full.names = TRUE)
@@ -64,15 +63,16 @@ lldata <- map2(llpaths,reps,read_loglik) %>%
 lldata %>% 
   group_by(k) %>% 
   summarise(deltaK = mean(abs(deltaL))/var(logLik)) %>% 
+  na.omit() %>% 
   ggplot(aes(x=k,y=deltaK)) + 
-    geom_point() + geom_line() + xlab("Number of clusters, K") + ylab("L''")
+    geom_point() + geom_line() + xlab("Number of clusters, K") + ylab(expression(paste(Delta,"K")))
 ```
 
 ## Admixture plot for K=2
 
-Read assignment probabilities for individuals from the run with K=2.
+To construct an admixture plot for K=2 we read assignment probabilities from the structure outputs.
 
-```{r, warning=FALSE}
+```{r, echo=TRUE}
 # Load csv with data from run # 12 in the structure analysis
 run12_samples <- read_table("structure/ak.filtered.nr.samples.txt",col_names = c("ID"))
 
@@ -82,9 +82,9 @@ run12 <-  read_table("structure/ak.structure.nr.k2.out.anc.txt",col_names = c("X
   pivot_longer(-ID,names_to = "cluster",values_to = "p") # Put assignment probabilities into a single column
 ```
 
-Join structure data with sample metadata
+We then join structure data with sample metadata
 
-```{r}
+```{r, echo=TRUE}
 metadata <- read_csv("ind_metrics_SNP2.csv") %>% 
   mutate(ID = case_when(
     id=="20" ~ "WB_36",
@@ -98,7 +98,7 @@ run12_meta <- run12 %>%
   left_join(metadata,by="ID")
 ```
 
-In order to make sense of population structure it is useful to visualise sampling locations on a map
+In order to make sense of population structure it is useful to visualise sampling locations on a map.
 
 ```{r}
 sites_data <- run12_meta %>% 
@@ -139,9 +139,9 @@ ggplot() +
   xlab("") + ylab("")
 ```
 
-From this plot we can devise a rough north-south ordering for our locations. This will help when plotting admixture results
+From this plot we can devise a rough north-south ordering for our locations while also ordering samples within Magnetic Island clockwise around the Island. We use this when plotting admixture results
 
-```{r}
+```{r, echo=TRUE}
 location_order <- 1:15
 names(location_order) <- c("BRR","EP","WP","LPB","SO","JB","KR","HaR","HFB","WB","MB","HB","GB","PB","MR")
 ```
@@ -158,12 +158,15 @@ run12_meta %>%
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + 
   theme(strip.text = element_text(size=6)) +
   xlab("Sample ID") + ylab("Admixture Proportion")
+```
+
+```{r}
 ggsave("figures/admixture_all.png",width = 3200,height = 800,units = "px")
 ```
 
-For a more detailed investigation into single bays, we generate individual plots for each location and save into `figures`.
+For a more detailed investigation into single bays, we generated individual plots for each location and save into `figures`.
 
-```{r}
+```{r, eval=FALSE}
 # Assign a certain colour to the clusters, so that cluster1 is consistently blue and cluster2 orange
 cluster_colors <- c("orange", "blue")
 
@@ -192,12 +195,17 @@ admix_plots_by_pop <- run12_meta %>%
   lmap(admix_plot_pop)
 ```
 
-
-This is the dominant population structure evident in our dataset and is easily visible in a PCoA. Note that there is some additional variation along PC2, however this comprises a much lower proportion of genetic variation than PC1.  
+This is the dominant population structure evident in our dataset and is easily visible in a PCoA. Note that there is some additional variation along PC2, however this comprises a much lower proportion of genetic variation than PC1.
 
 ```{r}
-# Perform the PCoA
-pcoa_ak_filtered_nr <- gl.pcoa(ak.filtered.nr)
+if ( file.exists("cache/pcoa_ak_filtered_nr.rdata")){
+  load("cache/pcoa_ak_filtered_nr.rdata")
+} else {
+  # Perform the PCoA
+  pcoa_ak_filtered_nr <- gl.pcoa(ak.filtered.nr)
+  # Cache the result because this is extremely slow
+  save(pcoa_ak_filtered_nr,file = "cache/pcoa_ak_filtered_nr.rdata")
+}
 
 pcoa_var <- (pcoa_ak_filtered_nr$eig/sum(pcoa_ak_filtered_nr$eig))[1:2]
 
@@ -206,7 +214,6 @@ pcoa_ak_filtered_nr_meta <- pcoa_ak_filtered_nr$scores %>%
   rownames_to_column("ID") %>% 
   left_join(metadata, by="ID") 
 ```
-
 
 ```{r}
 pcoa_ak_filtered_nr_meta %>% 
@@ -217,16 +224,25 @@ pcoa_ak_filtered_nr_meta %>%
   ylab(paste("PC2 (",round(pcoa_var[2]*100,1)," %)",sep=""))
 ```
 
+# Removing migrants and highly admixed individuals
 
-# Fine-scale population structure for Magnetic Island
+To investigate potential fine-scale population structure at Magnetic Island and adjacent reefs we removed migrants and highly admixed individuals (recent hybrids). Removal of these individuals was performed for all further population structure and genetic diversity analysis for the following reasons.
 
-## Remove migrants and highly admixed individuals
+1.  Migrants (genetic origin different from geographic sampling location) were removed because the geographic location of parental origin of these individuals is unknown. Their alleles reflect population genetic processes at their parent reef and not the reef they were sampled on.
 
-For fine scale structure at Magnetic Island migrants and highly admixed individuals from adjacent reefs will be removed to create a subset only for the Magnetic Island population called ak.pop.nm.mag. This is because those individuals are likely to distort any estimates of location population structure (ie due to restricted gene flow) by introducing a different process (admixture with a highly diverged population).
+2.  Highly admixed individuals representing likely recent hybrids were removed. Although these individuals might represent the initial stages of gene flow between populations there is a strong possibility that such initial stages of gene flow (F1 hybrids and early backcrosses) are subject to processes that play a much reduced-role in longer-term gene flow. In particular such early hybrids may have reduced fertility, so including them in our analyses could lead to over-estimates of gene flow between populations.
 
-On this basis we want to keep individuals within the Magnetic Island locations (ie "HFB","WB","MB","HB","GB","PB","MR" ) and where the proportion of the opposing cluster (ie C1) is more than 5%.  
+3.  The overall number of highly admixed individuals is too small to justify a separate analysis of hybridisation processes in its own right.
 
-Note that with this threshold of 5% we are only removing a total of 4 recent hybrids (admix~0.3-0.5) spread across 4 locations, three recent backcrosses (admix 0.15-0.3) and one higher level backcross (0.05-0.15). These individuals are not concentrated in any particular location.
+4.  Fine-scale population structure within Magnetic Island and within adjacent reefs is likely to reflect recent processes (last 10kya) whereas the genetic distinction between Magnetic Island and adjacent reefs has been shown to be ancient (\>500kya). Identification of the (likely more subtle) genetic signatures of these recent processes could be swamped by false signal arising from inclusion of migrants and/or recent hybrids.
+
+Based on the admixture results with K=2 and geographical location we consider "HFB","WB","MB","HB","GB","PB","MR" to represent Magnetic Island all other locations to be adjacent reefs.
+
+We therefore flag for removal, any individuals within the Magnetic Island locations (ie "HFB","WB","MB","HB","GB","PB","MR" ) where the proportion of the opposing cluster (ie C1) is more than 5%, and vice-versa for adjacent reef locations.
+
+Note that with this threshold of 5% we are only removing a total of 4 recent hybrids (admix\~0.3-0.5) spread across 4 locations, three recent backcrosses (admix 0.15-0.3) and one higher level backcross (0.05-0.15). These individuals are found at 5 reefs, of which only one HB is on Magnetic Island. Interestingly Havannah Reef, the closest to Magnetic Island, contained the largest number of putative recent hybrids (3) of any reef.
+
+A summary table of putative backcross types based on admixture proportions is shown below (F1 (0.3-0.5), F2 (0.15=0.3), F2+ (0.05-0.15)
 
 ```{r}
 run12_meta %>% 
@@ -238,10 +254,10 @@ run12_meta %>%
     between(min(p),0.3,0.5) ~ "F1",
   )) %>% 
   ungroup() %>% 
+  filter(backcross_type!="PB") %>% 
   group_by(pop,backcross_type) %>% 
-  summarise(n=n()) %>% view()
+  summarise(n=n())
 ```
-
 
 ```{r}
 maggie_admixed_and_migrants <- run12_meta %>% 
@@ -258,101 +274,221 @@ adjacent_admixed_and_migrants <- run12_meta %>%
   pull(ID)
 ```
 
+In addition to these 7 highly admixed individuals we found a further 17 migrants. In total we removed 9 individuals from adjacent reefs and 14 from Magnetic Island.
+
+The resulting filtered dataset (with these individuals removed) is saved as `ak.pop.nm`.
+
 ```{r}
-# Remove migrant and admixed individuals across the entire dataset
-ak.pop.nm <- gl.drop.ind(ak.filtered.nr, ind.list=c(maggie_admixed_and_migrants,adjacent_admixed_and_migrants))
+if ( file.exists("cache/ak.pop.nm.rdata")){
+  load("cache/ak.pop.nm.rdata")
+} else {
+
+  ak.pop.nm <- gl.drop.ind(ak.filtered.nr, ind.list=c(maggie_admixed_and_migrants,adjacent_admixed_and_migrants))
+
+  # Filter for monomorphs
+  ak.pop.nm <- gl.filter.monomorphs(ak.pop.nm)
+
+  # Recalculate locus metrics
+  ak.pop.nm <- gl.recalc.metrics(ak.pop.nm)
+
+  ## Remove missing loci
+  #A DArT dataset will not have individuals for which the calls are scored all as missing (NA) across all loci, but such individuals may   #sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions
+
+  ak.pop.nm <- gl.filter.allna(ak.pop.nm)
+
+  nInd(ak.pop.nm)
+  nLoc(ak.pop.nm)
+
+  save(ak.pop.nm, file="cache/ak.pop.nm.rdata")
+}
 ```
 
+# Fine-scale population structure
+
+To examine patterns of population structure in further detail we begin by calculating pairwise Fst between all locations.
+
 ```{r}
-# Filter for monomorphs
-ak.pop.nm <- gl.filter.monomorphs(ak.pop.nm)
+# Calculate pairwise Fst values between populations
+if ( file.exists("cache/fst.pop.rdata")){
+  load("cache/fst.pop.rdata")
+} else {
+  fst.pop <- gl.fst.pop(ak.pop.nm, nboots=100, percent=95, nclusters = min(4,parallel::detectCores()))
+  save(fst.pop,file = "cache/fst.pop.rdata")
+}
 ```
 
+This very clearly recapitulates the strong structure already evident at the broadscale between Magnetic Island and adjacent populations as evidenced in this heatmap
+
 ```{r}
-# Recalculate locus metrics
-ak.pop.nm <- gl.recalc.metrics(ak.pop.nm)
+fst.matrix <- as.matrix(as.dist(fst.pop$Fsts))
+heatmap(fst.matrix)
 ```
 
-## Remove missing loci
-
-A DArT dataset will not have individuals for which the calls are scored all as missing (NA) across all loci, but such individuals may sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions
+Quantitatively we see that Fst values between Magnetic Island and adjacent are much higher (\~0.3) than between sites within the same broad-scale population grouping (ie within Maggie or within adjacent). We can also see that Fst values between maggie bays are broadly spread between -0.005 and 0.01 whereas Fst values between adjacent sites seem to show two groupings. This suggests that there might be some fine-scale structure within the adjacent sites.
 
 ```{r}
-# Filter for missing loci
-ak.pop.nm <- gl.filter.allna(ak.pop.nm)
+fst_comparisons <- fst.matrix %>% 
+  as.data.frame() %>% 
+  rownames_to_column("pop1") %>% 
+  pivot_longer(-1, names_to = "pop2", values_to = "Fst") %>% 
+  mutate(cluster1 = case_when(
+    pop1 %in% maggie_sites ~ "maggie",
+    .default = "adjacent"
+  )) %>% 
+  mutate(cluster2 = case_when(
+    pop2 %in% maggie_sites ~ "maggie",
+    .default = "adjacent"
+  )) %>% 
+  mutate(fst_type = case_when(
+    (cluster1 == cluster2) & (cluster1 == "maggie") ~ "within_maggie",
+    (cluster1 == cluster2) & (cluster1 == "adjacent") ~ "within_adjacent",
+    (cluster1 != cluster2) ~ "between",    
+  )) %>% 
+  mutate(comp_type = str_extract(fst_type,"([^_]*)"))
+
+
+ggplot(fst_comparisons,aes(x=fst_type,y=Fst)) + 
+  geom_boxplot(outliers = FALSE) +
+  geom_jitter(aes(color=fst_type)) + 
+  facet_wrap(~comp_type, scales = "free")
 ```
 
+A closer look at those elevated Fst comparisons within adjacent reveals that they all caused by slight divergence of WP from other adjacent sites.
+
 ```{r}
-nInd(ak.pop.nm)
-nLoc(ak.pop.nm)
+fst_comparisons %>% 
+  filter(fst_type=="within_adjacent") %>% 
+  filter(Fst>0.005) 
 ```
 
+## Fine Scale Structure within adjacent and within Magnetic Island
+
+First we subset data for each location, including only relevant sites.
+
 ```{r}
-gl.smearplot(ak.pop.nm)
+if ( file.exists("cache/ak.pop.nm.adj.rdata")){
+  load("cache/ak.pop.nm.adj.rdata")
+} else {
+  # Keep only subpopulations from Adjacent sites for fine structure analysis
+  ak.pop.nm.adj <- gl.keep.pop(ak.pop.nm, pop.list = as.list(setdiff(location_codes,maggie_sites)))
+  save(ak.pop.nm.adj, file="cache/ak.pop.nm.adj.rdata")
+}
+
+if ( file.exists("cache/ak.pop.nm.mag.rdata")){
+  load("cache/ak.pop.nm.mag.rdata")
+} else {
+  # Keep only subpopulations from Magnetic Island for fine structure analysis
+  ak.pop.nm.mag <- gl.keep.pop(ak.pop.nm, pop.list = list("GB", "HB", "HFB", "MB", "MR", "PB", "WB"))
+  save(ak.pop.nm.mag, file="cache/ak.pop.nm.mag.rdata")
+}
 ```
 
-```{r}
-save(ak.pop.nm, file="cache/ak.pop.nm.rdata")
-```
+Then we convert both subsetted datasets to structure format to run externally with structure program. For both datasets we performed 20 replicate STRUCTURE runs, each with 20000 steps and 10000 burnin. Generating 20 replicates allows us to calculate the $\Delta K$ statistic of Evanno et al.
 
-## Keep only Magnetic Island subpopulations
-
-```{r}
-indNames(ak.pop.nm)
-```
-
-```{r}
-# Keep only subpopulations from Magnetic Island for fine structure analysis
-ak.pop.nm.mag <- gl.keep.pop(ak.pop.nm, pop.list = list("GB", "HB", "HFB", "MB", "MR", "PB", "WB"))
-```
-
-```{r}
-save(ak.pop.nm.mag, file="cache/ak.pop.nm.mag.rdata")
-```
-
-```{r}
-nInd(ak.pop.nm.mag)
-nLoc(ak.pop.nm.mag)
-```
-
-## Convert to structure
-
-Convert ak.pop.nm.mag to structure format to run externally with structure program
-
-```{r}
+```{r, eval=FALSE}
+# Convert to structure format to run externally with structure program
 gl2structure(ak.pop.nm.mag, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.pop.mag.nm.str", outpath = "structure", verbose = NULL)
+
+gl2structure(ak.pop.nm.adj, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.pop.adj.nm.str", outpath = "structure", verbose = NULL)
 ```
 
-```{r}
-nInd(ak.pop.nm.mag)
-nLoc(ak.pop.nm.mag)
-```
-
-## Admixture plot for ak.pop.nm.mag
-
-Calculating BIC for each model as before we see that K=1 is the most preferred model. Nevertheless, we check K=2 just in case this shows any indication of structure related to bays or north/south distinction on Magnetic Island.
+The plot of $\Delta K$ for Magnetic Island reveals a clear preference for K=3 at that location but showed a more complex picture for the adjacent locations, where we see elevated values for K=2 and K=5. Noting that in this method it is not possible to include K=1 in the test our decision on the choice of $K$ must also be informed by other factors such as PCA.
 
 ```{r}
-llpaths_mag <- list.files("structure","k_vs_lik_mag.txt",recursive = TRUE,full.names = TRUE)
-reps_mag <- llpaths_mag %>% str_extract("([0-9]+)")
+read_deltak_data <- function(subset="adj"){
+  like_filename <- paste("k_vs_lik_",subset,".txt",sep = "")
+  llpaths <- list.files("structure",like_filename,recursive = TRUE,full.names = TRUE)
+  reps <- llpaths %>% str_extract("([0-9]+)")
 
-# read_loglik <- function(path,n){
-#   read_table(path,col_names = c("k","logLik"))  %>%  
-#     mutate(Ldash = logLik - lag(logLik,1)) %>% 
-#     mutate(deltaL = lead(Ldash) - Ldash) %>% 
-#     add_column(rep=n)
-# }
+  lldata <- map2(llpaths,reps,read_loglik) %>% 
+    list_rbind()
 
+  lldata %>% 
+    group_by(k) %>% 
+    summarise(deltaK = mean(abs(deltaL))/var(logLik)) %>% 
+    add_column(subset=subset)
+}
 
-lldata_mag <- map2(llpaths_mag,reps_mag,read_loglik) %>% 
+deltak_data <- map(c("adj","mag"),read_deltak_data) %>% 
   list_rbind()
 
-lldata_mag %>% 
-  group_by(k) %>% 
-  summarise(deltaK = mean(abs(deltaL))/var(logLik)) %>% 
-  ggplot(aes(x=k,y=deltaK)) + 
-    geom_point() + geom_line() + xlab("Number of clusters, K") + ylab("L''")
+ggplot(deltak_data %>% na.omit(),aes(x=k,y=deltaK)) + 
+  geom_point() + 
+  geom_line() + 
+  facet_wrap(~subset) +
+  xlab("Number of clusters, K") + 
+  ylab(expression(paste(Delta,"K")))
 ```
+
+#### Fine structure within adjacent
+
+For the adjacent population we begin by examining the admixture result with $K=2$ since this is the lowest $K$ with an elevated $\Delta K$ value. This reveals a model driven by just two individuals from WP representing the blue cluster, while all other individuals are putative F1 hybrids between an unknown population and these WP individuals. This is not biologically realistic and suggests that the two WP individuals are outliers.
+
+```{r, warning=FALSE}
+# Reading admixture results for Adjacent and K=2
+
+samples_adj <- read_table("structure/ak.pop.adj.nm.samples.txt",col_names = c("ID"))
+
+run_adj_k2 <- read_table("structure/adj.1/ak.pop.adj.nm.k2.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2"),skip = 2) %>% 
+  cbind(samples_adj) %>% 
+  select(ID,starts_with("C")) %>% # Select only useful columns
+  pivot_longer(-ID,names_to = "cluster",values_to = "p") %>% 
+  left_join(metadata,by="ID")
+
+run_adj_k2 %>% 
+  mutate(pop_order = location_order[pop]) %>% 
+  ggplot(aes(x = ID, y = p)) +
+  geom_col(aes(fill=cluster),position="stack", stat = "identity",width = 1,linewidth=0) +
+  facet_grid(cols=vars(reorder(pop,pop_order)),scales = "free", space = "free") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + 
+  theme(strip.text = element_text(size=6)) +
+  xlab("Sample ID") + ylab("Admixture Proportion")
+```
+
+This can also be seen in a PCA which shows the two WP individuals as outliers.
+
+```{r}
+if (file.exists("cache/pcoa_ak_filtered_nr_adj.rdata")){
+  load("cache/pcoa_ak_filtered_nr_adj.rdata")
+} else {
+  # Note that despite its name gl.pcoa performs a PCA not a PCoA in this case
+  pcoa_ak_filtered_nr_adj <- gl.pcoa(ak.pop.nm.adj, plot.out = FALSE)
+  save(pcoa_ak_filtered_nr_adj,file = "cache/pcoa_ak_filtered_nr_adj.rdata")
+}
+```
+
+```{r}
+outlier_ids_adj <- run_adj_k2 %>% 
+  filter(p>0.9) %>% pull(ID)
+
+pcoa_var_adj <- (pcoa_ak_filtered_nr_adj$eig/sum(pcoa_ak_filtered_nr_adj$eig))[1:2]
+
+pcoa_ak_filtered_nr_meta_adj <-  pcoa_ak_filtered_nr_adj$scores %>% 
+  as.data.frame() %>% 
+  rownames_to_column("ID") %>% 
+  left_join(metadata,by="ID") 
+
+pcoa_ak_filtered_nr_meta_adj %>% 
+  ggplot(aes(x=PC1,y=PC2)) + 
+  geom_point(aes(color=pop)) + 
+  geom_label_repel(data = (pcoa_ak_filtered_nr_meta_adj %>% filter(ID %in% outlier_ids_adj)),aes(label=ID)) +
+  xlab(paste("PC1 (",round(pcoa_var_adj[1]*100,1)," %)",sep="")) +
+  ylab(paste("PC2 (",round(pcoa_var_adj[2]*100,1)," %)",sep=""))
+```
+
+These individuals might represent members of a third major population cluster for this species. According to Matias et al our adjacent cluster is likely to be XX based on location but individials from other clusters (XX) may be present.
+
+Removing these individuals and rerunning PCA reveals a complete absence of additional structure
+
+```{r}
+
+```
+
+```{r}
+ggsave("figures/admixture_all_mag.png",width = 3200,height = 800,units = "px")
+```
+
+### Fine Scale Structure at Magnetic Island
 
 ### Load csv
 
@@ -369,7 +505,6 @@ run10 <- read_table("structure/ak.pop.mag.nm.k3.out.anc.txt",col_names = c("X1",
 For a first glimpse, create a barplot that shows the bays on the x-axis, admixture proportion on y-axis and all clusters stacked.
 
 ```{r}
-
 run10 %>% 
   mutate(pop_order = location_order[pop]) %>% 
   ggplot(aes(x = ID, y = p)) +
@@ -378,13 +513,15 @@ run10 %>%
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + 
   theme(strip.text = element_text(size=6)) +
   xlab("Sample ID") + ylab("Admixture Proportion")
-ggsave("figures/admixture_all_mag.png",width = 3200,height = 800,units = "px")
+```
 
+```{r}
+ggsave("figures/admixture_all_mag.png",width = 3200,height = 800,units = "px")
 ```
 
 Plots for individual bays are saved into the figures folder
 
-```{r}
+```{r, eval=FALSE}
 # Use lmap to iterate over all pops and run the plotting function on each
 admix_plots_by_pop10 <- run10 %>% 
   split(run10$pop) %>% 
@@ -396,12 +533,18 @@ Lets use a PCA now to try and understand our result of 3 clusters and see if tha
 ```{r}
 load("cache/ak.pop.nm.mag.rdata")
 
+if (file.exists("cache/pcoa_ak_filtered_nr_mag.rdata")){
+  load("cache/pcoa_ak_filtered_nr_mag.rdata")
+} else {
+  pcoa_ak_filtered_nr_mag <- gl.pcoa(ak.pop.nm.mag, plot.out = FALSE)
+  save(pcoa_ak_filtered_nr_mag,file = "cache/pcoa_ak_filtered_nr_mag.rdata")
+}
+
 dominant_clusters_run10 <- run10 %>% 
   group_by(ID) %>% 
   slice_max(p) %>% 
   select(ID,cluster,p)
 
-pcoa_ak_filtered_nr_mag <- gl.pcoa(ak.pop.nm.mag, plot.out = FALSE)
 
 pcoa_var_mag <- (pcoa_ak_filtered_nr_mag$eig/sum(pcoa_ak_filtered_nr_mag$eig))[1:2]
 
@@ -412,7 +555,7 @@ pcoa_ak_filtered_nr_meta_mag <-  pcoa_ak_filtered_nr_mag$scores %>%
   left_join(dominant_clusters_run10,by="ID")
 ```
 
-When samples are annotated with their dominant cluster we can see that the three apparent groupings in PCA do indeed correspond with groupings identified by structure. 
+When samples are annotated with their dominant cluster we can see that the three apparent groupings in PCA do indeed correspond with groupings identified by structure.
 
 ```{r}
 pcoa_ak_filtered_nr_meta_mag %>% 
@@ -422,7 +565,7 @@ pcoa_ak_filtered_nr_meta_mag %>%
   ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep=""))
 ```
 
-Now plotting by location we can see that the largest cluster (C1) is comprised of samples from all bays, however, the two smaller clusters (C3, and C2) are primarily made up of individuals from Picnic Bay and Geoffrey Bay.  Beyond this there is no apparent geographic pattern to genetic structure within the Magnetic Island population. 
+Now plotting by location we can see that the largest cluster (C1) is comprised of samples from all bays, however, the two smaller clusters (C3, and C2) are primarily made up of individuals from Picnic Bay and Geoffrey Bay. Beyond this there is no apparent geographic pattern to genetic structure within the Magnetic Island population.
 
 ```{r}
 pcoa_ak_filtered_nr_meta_mag %>% 
@@ -431,5 +574,3 @@ pcoa_ak_filtered_nr_meta_mag %>%
   xlab(paste("PC1 (",round(pcoa_var_mag[1]*100,1)," %)",sep="")) +
   ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep=""))
 ```
-
-
