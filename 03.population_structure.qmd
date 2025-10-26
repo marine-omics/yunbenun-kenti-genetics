@@ -490,8 +490,6 @@ ggsave("figures/admixture_all_mag.png",width = 3200,height = 800,units = "px")
 
 ### Fine Scale Structure at Magnetic Island
 
-### Load csv
-
 ```{r, warning=FALSE}
 samples10 <- read_table("structure/ak.pop.mag.nm.samples.txt",col_names = c("ID"))
 
@@ -502,7 +500,7 @@ run10 <- read_table("structure/ak.pop.mag.nm.k3.out.anc.txt",col_names = c("X1",
   left_join(metadata,by="ID")
 ```
 
-For a first glimpse, create a barplot that shows the bays on the x-axis, admixture proportion on y-axis and all clusters stacked.
+A barplot based on a structure analysis with K=3 shows that one cluster (C1) is dominant in all bays except Picnic Bay and Goeffrey Bay.  The other two clusters (C2, and C3) are largely concentrated in Picnic Bay and Geoffrey Bay but are present in rougly equal numbers in both those bays. 
 
 ```{r}
 run10 %>% 
@@ -516,10 +514,10 @@ run10 %>%
 ```
 
 ```{r}
+# Plots for individual bays are saved into the figures folder
 ggsave("figures/admixture_all_mag.png",width = 3200,height = 800,units = "px")
 ```
 
-Plots for individual bays are saved into the figures folder
 
 ```{r, eval=FALSE}
 # Use lmap to iterate over all pops and run the plotting function on each
@@ -528,7 +526,7 @@ admix_plots_by_pop10 <- run10 %>%
   lmap(admix_plot_pop,"10",cluster_colors = c(cluster_colors,"cyan","purple"))
 ```
 
-Lets use a PCA now to try and understand our result of 3 clusters and see if that matches what we see using a different visualisation technique.
+The results of admixture are also reflected in a PCA.
 
 ```{r}
 load("cache/ak.pop.nm.mag.rdata")
