@@ -94,6 +94,7 @@ metadata <- read_csv("ind_metrics_SNP2.csv") %>%
 save(metadata,file = "cache/metadata.rdata")
 
 
+
 run12_meta <- run12 %>% 
   left_join(metadata,by="ID")
 ```
@@ -104,7 +105,11 @@ In order to make sense of population structure it is useful to visualise samplin
 sites_data <- run12_meta %>% 
   group_by(pop,lat,lon) %>% 
   summarise(n_samples = n()/2) %>% 
-  mutate(name = location_names[pop])
+  mutate(name = location_names[pop]) %>% 
+  mutate(pop_order = location_order[pop]) %>% 
+  mutate(pop_group = ifelse(pop %in% maggie_sites,"MI","ADJ"))
+
+save(sites_data,file = "cache/sites_data.rdata")
 ```
 
 ```{r, include=FALSE}
@@ -480,9 +485,6 @@ These individuals might represent members of a third major population cluster fo
 
 Removing these individuals and rerunning PCA reveals a complete absence of additional structure
 
-```{r}
-
-```
 
 ```{r}
 ggsave("figures/admixture_all_mag.png",width = 3200,height = 800,units = "px")
@@ -500,7 +502,7 @@ run10 <- read_table("structure/ak.pop.mag.nm.k3.out.anc.txt",col_names = c("X1",
   left_join(metadata,by="ID")
 ```
 
-A barplot based on a structure analysis with K=3 shows that one cluster (C1) is dominant in all bays except Picnic Bay and Goeffrey Bay.  The other two clusters (C2, and C3) are largely concentrated in Picnic Bay and Geoffrey Bay but are present in rougly equal numbers in both those bays. 
+A barplot based on a structure analysis with K=3 shows that one cluster (C1) is dominant in all bays except Picnic Bay and Goeffrey Bay. The other two clusters (C2, and C3) are largely concentrated in Picnic Bay and Geoffrey Bay but are present in rougly equal numbers in both those bays.
 
 ```{r}
 run10 %>% 
@@ -517,7 +519,6 @@ run10 %>%
 # Plots for individual bays are saved into the figures folder
 ggsave("figures/admixture_all_mag.png",width = 3200,height = 800,units = "px")
 ```
-
 
 ```{r, eval=FALSE}
 # Use lmap to iterate over all pops and run the plotting function on each
@@ -563,7 +564,7 @@ pcoa_ak_filtered_nr_meta_mag %>%
   ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep=""))
 ```
 
-Now plotting by location we can see that the largest cluster (C1) is comprised of samples from all bays, however, the two smaller clusters (C3, and C2) are primarily made up of individuals from Picnic Bay and Geoffrey Bay. Beyond this there is no apparent geographic pattern to genetic structure within the Magnetic Island population.
+Now plotting by location we can see that the largest cluster (C1) is comprised of samples from all bays, however, the two smaller clusters (C3, and C2) are primarily made up of individuals from southern bays, Picnic Bay and Geoffrey Bay. Nevertheless, neither C2 or C3 clusters is specifically associated with a particular bay (both clusters are found in PB and GB).  
 
 ```{r}
 pcoa_ak_filtered_nr_meta_mag %>% 
@@ -572,3 +573,26 @@ pcoa_ak_filtered_nr_meta_mag %>%
   xlab(paste("PC1 (",round(pcoa_var_mag[1]*100,1)," %)",sep="")) +
   ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep=""))
 ```
+
+If we color the plot by Island side (North = HFB, WB, MB, HB; South = GB, PB, MR) we can more clearly see that clusters C2 and C3 are dominated by Southern bays.  Noting that the percentages of variation explained by this PCA are fairly low (5.6% in total) it is possible that very subtle population structre in southern bays, possibly driven by small population sizes or inbreeding is driving the PCA. 
+
+```{r}
+north <- c("HFB","WB","MB","HB")
+
+south <- c("GB","PB","MR")
+
+pcoa_ak_filtered_nr_meta_mag %>% 
+  mutate(side = case_when(
+    pop %in% north ~ "North",
+    pop %in% south ~ "South"
+  )) %>% 
+  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color=side)) + 
+  xlab(paste("PC1 (",round(pcoa_var_mag[1]*100,1)," %)",sep="")) +
+  ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep=""))
+```
+
+## North-South division at Magnetic Island
+
+Population structuring at Magnetic Island is relatively subtle.  Although a 3-cluster model provides the best fit the three clusters do not seem to correspond to biologically meaningful ancestral populations.  This subtle structure might be being driven by differences in genetic diversity between Northern and Southern bays.
+
+
