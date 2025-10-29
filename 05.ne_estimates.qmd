@@ -1,0 +1,164 @@
+---
+title: "5 Ne Estimates"
+author: "Sandra Erdmann and Ira Cooke"
+format: gfm
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+execute:
+  freeze: auto
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+
+```{r, echo=FALSE}
+## Load Libraries
+library(tidyverse)
+library(dartRverse)
+library(dartR.base)
+library(ggplot2)
+source("constants.R")
+```
+
+# Effective Population Size
+
+Here we use the LD method implemented in Neestimator2 to estimate effective population size.  This method is based on the fact that as Ne becomes small even a perfect random-mating population will experience some inbreeding and this will induce LD.  A key assumption of the method is that the pairs of loci used for this calculation are on separate chromosomes because we do not want to include LD due to physical linkage. 
+
+Although the original Neestimator2 program doesn't appear to be maintained (DNS error attempting to access [http://www.molecularfisherieslaboratory.com.au/](http://www.molecularfisherieslaboratory.com.au/)) a binary is distributed with the [RLDNe software](https://github.com/zakrobinson/RLDNe)
+
+Thus we start by installing this package
+
+```{r, eval=FALSE}
+devtools::install_github(repo="zakrobinson/RLDNe")
+```
+
+
+The path to the NE estimator binary can be obtained as follows (adjust if not using a mac)
+
+```{r}
+neest_path = paste(find.package("RLDNe"),"bin/Mac",sep = "/")
+```
+
+Choice of loci and individuals for Ne estimation follows similar principles to that of genetic diversity estimates.  Thus we can use the `ak.pop.nm` dataset as a starting point. 
+
+```{r}
+# Loads ak.pop.nm
+load("cache/ak.pop.nm.rdata")
+```
+
+## Adding chromosome information
+
+To avoid pairing loci on the same chromosome we need to include chromosome info in our genlight object.  This info is available in the vcf generated via `dart2vcf` in [01.data_wrangling_and_filtering](01.data_wrangling_and_filtering.md).  To include it we need to generate a vcf with only our loci and individuals from the `ak.pop.nm` data.
+
+```{r, eval=FALSE}
+write.table(ak.pop.nm$loc.names,file = "dart2vcf/ak.pop.nm.loci",row.names = FALSE,quote = FALSE)
+write.table(ak.pop.nm$ind.names,file = "dart2vcf/ak.pop.nm.ind",row.names = FALSE,quote = FALSE,col.names = FALSE)
+```
+
+A vcf with these loci and individuals is then created using the script `dart2vcf/filter2.sh`
+
+```{r, results='hide'}
+ak.chr <- gl.read.vcf("dart2vcf/ak.pop.nm.ind.vcf.gz", ind.metafile = "ind_metrics_SNP2_namefix.csv")
+```
+
+## Merging populations
+
+Estimation of Ne from LD information benefits from larger sample sizes, especially when the actual value of Ne is large.  We therefore merged populations into the following units
+
+Merged Unit | Sampling Locations | Sample Size
+------------|--------------------|------------
+no | "HB", "HFB", "MB", "WB" | 59
+so | "GB", "MR", "PB" | 58
+MS | "BRR", "JB", "KR" | 48
+PI | "SO", "LPB", "EP", "WP", "HaR" | 239
+
+
+```{r, results='hide'}
+# Merge subpopulations from north Magnetic Island into one population
+ak.chr.no.so <- gl.merge.pop(ak.chr, old=c("HB", "HFB", "MB", "WB"), new='no')
+
+# Using this merged dataset, merge also subpopulations from south Magnetic Island into one population. 
+ak.chr.no.so <- gl.merge.pop(ak.chr.no.so, old=c("GB", "MR", "PB"), new='so')
+
+# Merge Mid-shelf
+ak.chr.no.so <- gl.merge.pop(ak.chr.no.so, old=c("BRR", "JB", "KR"), new='MS')
+
+# Merge PI
+ak.chr.no.so <- gl.merge.pop(ak.chr.no.so, old=c("SO", "LPB", "EP", "WP", "HaR"), new='PI')
+
+ak.chr.no.so <- gl.filter.monomorphs(ak.chr.no.so)
+ak.chr.no.so <- gl.recalc.metrics(ak.chr.no.so)
+```
+
+
+```{r, results='hide'}
+# And then make another dataset where adjacent sites are all merged
+ak.chr.mi.adj <- gl.merge.pop(ak.chr.no.so, old=c("PI","MS"), new='adj')
+ak.chr.mi.adj <- gl.filter.monomorphs(ak.chr.mi.adj)
+ak.chr.mi.adj <- gl.recalc.metrics(ak.chr.mi.adj)
+```
+
+### Ne all merged units
+
+```{r}
+if ( !file.exists("cache/ne.chr.no.so.rdata") ){
+  ne.chr.no.so <- dartR.popgen::gl.LDNe(ak.chr.no.so, outfile = "LD.chr.no.so.nm.txt", neest.path = neest_path,critical = c(0, 0.05),plot.out = FALSE,pairing = "separate")
+
+  save(ne.chr.no.so,file = "cache/ne.chr.no.so.rdata")
+} else {
+  load("cache/ne.chr.no.so.rdata")
+}
+```
+
+Ne estimates for Midshelf (almost offshore) reefs are astronomically high and upper confidence intervals are Inf (not estimable).  This is probably due to a combination of low sample size and high Ne leading to poor estimates.  Therefore we combine MS and PI into one population (Adjacent reefs).
+
+### Ne North and South Magnetic Island vs Adjacent reefs
+
+
+```{r}
+if (!file.exists("cache/ne.chr.mi.adj.rdata")){
+
+  ne.chr.mi.adj <- dartR.popgen::gl.LDNe(ak.chr.mi.adj, outfile = "LD.chr.mi.adj.nm.txt", neest.path =  neest_path,critical = c(0, 0.05),plot.out = FALSE,pairing = "separate")
+
+  save(ne.chr.mi.adj, file = "cache/ne.chr.mi.adj.rdata")
+} else {
+  load("cache/ne.chr.mi.adj.rdata")
+}
+```
+
+
+```{r}
+# Helper function for extracting Ne results.
+extract_ne_data <- function(netable){
+  f1 <- as.numeric(netable[,4]) # No S* 
+  # Corresponds to Ne, Lower CI (JackKnife), Upper CI (JackKnife)
+  data.frame(ne=f1[6],ne_min_jkn=f1[9],ne_max_jkn=f1[10])
+}
+
+ne_results <- map(ne.chr.mi.adj,extract_ne_data) %>% 
+  list_rbind(names_to = "pop") %>%  
+  mutate(pop = case_when(
+    pop=="adj" ~ "ADJ",
+    grepl("^no",pop) ~ "NO",
+    grepl("^so",pop) ~ "SO"
+  )) %>% 
+  mutate(pop_name = pop_names[pop])
+```
+
+
+```{r}
+ggplot(ne_results,aes(x=pop_name,y=ne,ymin=ne_min_jkn,ymax=ne_max_jkn)) + 
+  geom_crossbar(aes(color = pop), linewidth = 1) +
+  scale_color_manual(values = pop_colors) +
+  labs(
+    x = "",
+    y= "Ne"
+  ) +
+  scale_y_log10() + 
+  theme_minimal() + 
+  theme(legend.position = "None")
+```
+
