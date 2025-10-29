@@ -1,0 +1,230 @@
+---
+title: "4 Genetic Diversity"
+author: "Sandra Erdmann"
+format: gfm
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+execute:
+  freeze: auto
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+
+```{r, echo=FALSE}
+## Load Libraries
+library(dartRverse)
+library(dartR.base)
+library(hierfstat)        # allelic richness
+library(tidyverse)
+source("constants.R")
+```
+
+# Genetic Diversity
+
+As a starting point for genetic diversity analyses we use the same filtered set of loci as was used for population structure analyses. Specifically;
+
+-   Filtered loci are the same because these have already been filtered to ensure that they are as reliable as possible while being mindful to avoid filters that would distort allele frequencies and hence bias genetic diversity estimates.
+
+-   Individuals with admixture proportions that would indicate that they are migrants between MI and "other" populations have been removed. This is because these these individuals have uncertain origins (ie parents likely from a different reef to where they were found).
+
+-   Highly admixed individuals (admixture proportion \> 5%) between the two major lineages in this study (ie Maggie vs surrounding reefs) have been excluded. See note in the section on population structure about this threshold and the relatively small number of individuals it excludes.
+
+-   Individuals that are likely genetic clones or close relatives have been removed as these are undesirable in pretty much all analyses.
+
+The starting data satisfying all these criteria is called `ak.pop.nm` as was created in the `03.population_structure` script
+
+```{r}
+# Loads ak.pop.nm
+load("cache/ak.pop.nm.rdata")
+```
+
+## Population groupings
+
+To facilitate diversity statistics we use population groupings following both known genetic structure and geography. Datasets reflecting these groupings are;
+
+Dataset Name | Grouping
+-------------| ------------
+`ak.pop.nm` | All sites grouped separately
+`ak.gen.no.so` | Magnetic Island grouped into North and South
+`ak.gen.mi.adj` | All sites grouped into Magnetic Island and Adjacent Reefs
+
+```{r, results='hide'}
+# Creation of the `ak.gen.no.so` dataset
+
+if (!file.exists("cache/ak.gen.no.so.rdata")) {
+  # Merge subpopulations from north Magnetic Island into one population
+  ak.gen.no.so <- gl.merge.pop(ak.pop.nm, old=c("HB", "HFB", "MB", "WB"), new='no')
+  # Using this merged dataset, merge also subpopulations from south Magnetic Island into one population. 
+  ak.gen.no.so <- gl.merge.pop(ak.gen.no.so, old=c("GB", "MR", "PB"), new='so')
+  ak.gen.no.so <- gl.filter.monomorphs(ak.gen.no.so)
+  ak.gen.no.so <- gl.recalc.metrics(ak.gen.no.so)
+  save(ak.gen.no.so,file = "cache/ak.gen.no.so.rdata")
+} else {
+  load("cache/ak.gen.no.so.rdata")
+}
+```
+```{r, results='hide'}
+if (!file.exists("cache/ak.gen.mi.adj.rdata")){
+  ak.gen.mi.adj <- gl.merge.pop(ak.pop.nm, old=c("GB", "HB", "HFB", "MB", "MR", "PB", "WB"), new='MI')
+  ak.gen.mi.adj <- gl.merge.pop(ak.gen.mi.adj, old=c("SO", "LPB", "EP", "WP", "HaR","BRR", "JB", "KR"), new='ADJ')
+  ak.gen.mi.adj <- gl.filter.monomorphs(ak.gen.mi.adj)
+  ak.gen.mi.adj <- gl.recalc.metrics(ak.gen.mi.adj)
+  save(ak.gen.mi.adj, file="cache/ak.gen.mi.adj.rdata")
+} else {
+  load("cache/ak.gen.mi.adj.rdata")
+}
+
+```
+## Convert to hierfstat format
+
+```{r,results='hide'}
+# Convert genlight objects to genind format
+ak.pop.nm.hfstat <- gl2gi(ak.pop.nm) %>% genind2hierfstat()
+ak.gen.no.so.hfstat <- gl2gi(ak.gen.no.so)  %>% genind2hierfstat() 
+ak.gen.mi.adj.hfstat <- gl2gi(ak.gen.mi.adj) %>% genind2hierfstat()
+```
+
+## Allelic richness
+
+Our data comprise a set of biallelic SNPs which means that the maximum number of alleles at any locus is 2.  Allelic richness for the entire dataset with no subdivisions should be exactly 2 since every SNP must have exactly 2 alleles in order to be included.  Values of AR less than 2 come from the fact that some alleles will be missing when a subsample is made from the whole.  The larger the sample the higher the value of AR so the `allelic.richness` function from hierfstat is used here. This calculates a rarefied value (accounting for sample size). 
+
+```{r}
+# Calculate allelic richness
+ar <- allelic.richness(ak.pop.nm.hfstat)
+ar.no.so <- allelic.richness(ak.gen.no.so.hfstat)
+ar.mi.adj <- allelic.richness(ak.gen.mi.adj.hfstat)
+```
+
+```{r}
+load("cache/sites_data.rdata")
+```
+
+
+The plot below shows Ar statistics calculated by-reef.  This clearly shows that values from Adjacent reefs (with the exception of West Pelorus) have consistently higher values than bays at Magnetic Island. This is notable because Ar declines rapidly is response to a reduction in population size.  
+
+```{r}
+summarise_pops <- function(coltable){
+  coltable %>% 
+  colMeans(na.rm = TRUE) %>% 
+  as.data.frame() %>% 
+  rownames_to_column("pop") %>% 
+  left_join(sites_data)
+}
+```
+
+
+```{r}
+# Show summary of Ar statistics
+ar$Ar %>% 
+  summarise_pops() %>% 
+  dplyr::rename(Ar = ".") %>% 
+  ggplot(aes(x=reorder(pop,pop_order),y=Ar)) + 
+  geom_point(aes(color=pop_group)) + 
+  scale_color_manual(values = pop_colors, labels = pop_names) +
+  labs(
+    x="Reef",
+    y="Rarefied Allelic Richness, Ar"
+  ) +
+  theme_minimal() +
+  theme(legend.title = element_blank(), legend.position = "top")
+```
+
+When we aggregate reefs into population groupings such as "Adjacent Reefs", and North/South Maggie we get higher Ar values because the rarefaction correction is based on the smallest unit. 
+
+Calculating Ar for North/South Maggie suggests that Ar might actually be higher in the South but the difference is very small.
+
+```{r}
+(ar.no.so$Ar %>% 
+  colMeans(na.rm = TRUE))[c("so","no")]
+```
+
+And for the dataset where Adjacent and Maggie are grouped we recapitulate the broad result that Adjacent Reefs have higher Ar than Magnetic Island, this time the difference is substantial.
+
+If we wanted to formally test whether Ar is higher at adjacent than at Magnetic Island we could use a permutation test. 
+
+```{r}
+ar.mi.adj$Ar %>% 
+  colMeans(na.rm = TRUE)
+```
+
+## Heterozygosity
+
+Calculate heterozygosity-related stats 
+
+```{r}
+basic_stats <- basic.stats(ak.pop.nm.hfstat)
+```
+
+```{r}
+# Assemble all stats into a table averaged by column
+ho.stats <- basic_stats$Ho %>% 
+  summarise_pops() %>% 
+  dplyr::rename(Ho = ".") 
+
+he.stats <- basic_stats$Hs %>% 
+  summarise_pops() %>% 
+  dplyr::rename(He = ".") 
+
+fis.stats <- basic_stats$Fis %>% 
+  summarise_pops() %>% 
+  dplyr::rename(fis = ".") 
+
+allhet.stats <- ho.stats %>% 
+  left_join(he.stats) %>% 
+  left_join(fis.stats) %>% 
+  pivot_longer(all_of(c("He","Ho","fis")), names_to = "stat", values_to = "stat_value")
+```
+
+
+```{r}
+allhet.stats %>% 
+  ggplot(aes(x=reorder(pop,pop_order),y=stat_value)) + 
+  geom_point(aes(color=pop_group)) + 
+  facet_wrap(~stat, scales="free", ncol=1) +
+  geom_point(aes(color=pop_group)) + 
+  scale_color_manual(values = pop_colors, labels = pop_names) +
+  labs(
+    x="Reef",
+    y="Stat Value"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top", legend.title = element_blank()) 
+```
+
+Alternatively we can present this as a boxplot
+
+```{r}
+allhet.stats %>% 
+  ggplot(aes(x=pop_group,y=stat_value)) + 
+  geom_boxplot(aes(color=pop_group)) + 
+  facet_wrap(~stat, scales = "free") +
+  scale_color_manual(values = pop_colors, labels = pop_names) +
+  labs(
+    x="",
+    y="Stat Value"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top", legend.title = element_blank()) 
+```
+
+
+
+## Fixed allelic differences/Private alleles
+
+If we look at private alleles and fixed differences between all pairs of reefs we see that the number of private alleles strongly reflects the sample size.  We also see a few examples of fixed differences (alternate alleles fixed in different populations) but since sample sizes are small this could be heavily influenced by this.
+
+```{r}
+pa_ak.gen <-dartR::gl.report.pa(ak.pop.nm)
+#gl.report.pa(ak.gen)       # if you run this without naming it, you get a graph of connections
+```
+
+When running this on amalgamated populations we now see no fixed differences as expected.  Such fixed differences were not found in prior papers (eg Cooke et al). The numbers of private alleles again reflect sample sizes and the strong differences in allele frequencies between these populations.
+
+```{r}
+pa_ak.gen.mi <- gl.report.pa(ak.gen.mi.adj)
+```
+
