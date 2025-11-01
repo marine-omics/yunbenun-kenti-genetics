@@ -13,32 +13,20 @@ names(location_order) <- c("BRR","EP","WP","LPB","SO","JB","KR","HaR","HFB","WB"
 cluster_colors <- c("blue","orange")
 
 maggie_sites <- c("HFB","WB","MB","HB","GB","PB","MR")
+maggie_no_sites <- c("HFB","WB","MB","HB")
+maggie_so_sites <- c("GB","PB","MR")
 
 ## Assign colours to populations
 
 #Assign colours based on these site locations: Magnetic Island vs. Palm Island vs. Mid-shelf
 
-# Get order of population names
-#levels(ak.gen.mi@pop)
-#  "BRR" "EP"  "MI"  "HaR" "JB"  "KR"  "LPB" "SO"  "WP"
+library(colorspace)
 
-# Assign colours to populations in that order:
-# Mid-shelf = yellow "#FDD835"; Palms = green "#74c476"; Magnetic Island = orange "orange";
-cols.mi <- c("#FDD835", "#74c476", "orange", "#74c476", "#FDD835", "#FDD835", "#74c476", "#74c476", "#74c476")
+gr_or <- diverge_hcl(palette = "Green-Orange",n=8)
 
-# Get order of population names
-#levels(ak.gen.mi.pi@pop)
-#  "BRR" "PI"  "MI"  "JB"  "KR"
+pop_colors = c("ADJ" = gr_or[1],"MI"=gr_or[8],"NO"=gr_or[7],"SO"=gr_or[6])
 
-# Assign colours to populations in that order: 
-# Mid-shelf = yellow "#FDD835"; Palms = green "#74c476"; Magnetic Island = orange "orange";
-cols.mi.pi <- c("#FDD835", "#74c476", "orange", "#FDD835", "#FDD835")
-
-# Get order of population names
-#levels(ak.gen.mi.pi.ms@pop)
-#  "MS" "PI" "MI"
-
-# Assign colours to populations in that order: 
-# Mid-shelf = yellow "#FDD835"; Palms = green "#74c476"; Magnetic Island = orange "orange";
-cols.mi.pi.ms <- c("#FDD835", "#74c476", "orange")
-
+pop_names <- c("ADJ" = "Adjacent Reefs",
+               "NO" = "North Magnetic Island",
+               "SO" = "South Magnetic Island",
+               "MI" = "Magnetic Island")

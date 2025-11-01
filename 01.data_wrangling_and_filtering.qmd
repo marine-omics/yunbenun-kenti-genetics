@@ -13,12 +13,6 @@ execute:
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
 ```
 
-# Description
-
-The dataset analysed in the following script is from this publication (XXX)
-
-This script analyses a SNP dataset from DArT using the package darTRverse (version 2024), which contains 7 subpackages: https://github.com/green-striped-gecko/dartRverse
-
 # Abbreviations
 
 Reef names:

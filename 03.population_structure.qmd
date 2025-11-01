@@ -593,6 +593,12 @@ pcoa_ak_filtered_nr_meta_mag %>%
 
 ## North-South division at Magnetic Island
 
-Population structuring at Magnetic Island is relatively subtle.  Although a 3-cluster model provides the best fit the three clusters do not seem to correspond to biologically meaningful ancestral populations.  This subtle structure might be being driven by differences in genetic diversity between Northern and Southern bays.
+Population structuring at Magnetic Island is relatively subtle.  Although a 3-cluster model provides the best fit the three clusters do not seem to correspond to biologically meaningful ancestral populations.  This subtle structure might be being driven by differences in genetic diversity between Northern and Southern bays. Our reasoning is as follows; 
+
+1. Firstly we note that a plot of overall population structure (including adjacent reefs) clearly shows much higher numbers of migrants in northern bays that southern ones.  This raises the possibility that admixture with adjacent reefs might alter genetic diversity in Northern bays. 
+
+2. Secondly, a PCA and admixture analysis of Magnetic Island bays reveals the Northern bays as a single genetic cluster, whereas Southern bays appear structured.  This structure within Southern bays does not correspond to geography but might instead be driven by low effective population size.
+
+As we will see later in [05.ne_estimates](05.ne_estimates.md) the Ne in southern bays at Magnetic Island is very low.  If Ne is low we expect to see a more pronounced effect of non-random mating or reproductive success in structuring allele frequencies. As corals are mass spawners it is possible that the reefs at GB and PB, with their very small Ne could be dominated by progeny from a small number of highly successful individuals.  This might explain the apparent structure visible in the PCA and admixture analyses. Moreover, simulated dispersal results (Figure 5 in the paper) indicate that larval dispersal can readily occur between PB and GB which would explain why genetic clusters in PCA are present in both locations. 
 
 
