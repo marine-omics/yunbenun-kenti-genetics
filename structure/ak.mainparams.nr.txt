@@ -2,8 +2,8 @@
 #define BURNIN    10000   // (int) length of burnin period
 #define NUMREPS   20000   // (int) number of MCMC reps after burnin
 
-#define NUMINDS    427    // (int) number of diploid individuals in data file
-#define NUMLOCI    5265    // (int) number of loci in data file
+#define NUMINDS    426    // (int) number of diploid individuals in data file
+#define NUMLOCI    5267    // (int) number of loci in data file
 #define PLOIDY       2    // (int) ploidy of data
 #define MISSING     -9    // (int) value given to missing genotype data
 #define ONEROWPERIND 0    // (B) store data for individuals in a single line

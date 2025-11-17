@@ -2,7 +2,7 @@
 title: "1 Data wrangling and filtering"
 author: "Sandra Erdmann"
 format: gfm
-editor: visual
+editor: source
 editor_options: 
   chunk_output_type: inline
 execute:
@@ -16,8 +16,6 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FAL
 # Abbreviations
 
 Reef names:
-
-
 
 -   BRR = Bramble Reef
 
@@ -53,7 +51,6 @@ Data sets:
 
 ak = Acropora kenti SNP dataset ak.filtered = used ak, which has been filtered for all downstream analysis ak.filtered.nr = used ak.filtered and removed replicates (nr = no replicates) ak.filtered.nr.nm = = used ak.filtered.nr and removed migrants (nm = no migrants) ak.pop = used ak.filtered.nr to run population structure analysis ak.pop.nm = used ak.pop and removed migrants ak.pop.mag = population structure dataset for Magnetic Island only ak.rel = used ak.filtered.nr.nm to run relatedness analysis ak.gen = used ak.filtered.nr.nm to calculate genetic diversity estimates (Fst, Fis, He, Ho) ak.gen.mag = used ak.gen to calculate genetic diversity metrics for Magnetic Island only ak.gen.adj = used ak.gen to calculate genetic diversity metrics for adjacent reefs only
 
-
 ```{r, eval=FALSE}
 # Installation of dartR
 
@@ -88,7 +85,6 @@ dartRverse_install(package = "dartR.base", rep = "github", branch = "dev")
 # Check which packages and versions are installed
 dartRverse_install()
 ```
-
 
 ```{r}
 ## Load library
@@ -143,7 +139,7 @@ ak$ind.names
 Inspect the individual call rates and remove duplicates with the lower call rate
 
 ```{r}
-gl.report.callrate(ak, method = "ind", ind.to.list = 528)
+dartR.base::gl.report.callrate(ak, method = "ind", ind.to.list = 528)
 ```
 
 # Remove duplicates
@@ -416,7 +412,7 @@ This process results in a loss of around 10% of loci (50323 of 55247), mostly be
 
 After performing the conversion we extract a subset corresponding to the same SNPs and individuals as `ak.filtered`
 
-```bash
+``` bash
 # Sanitize loci because dartR changes them from the original
 #
 cat ak.filtered.loci| sed 's/-/_/' | sed 's:/:>:' | sed 's/-/:/' | sed 's/_/|F|0--/'  > tmp.loci 

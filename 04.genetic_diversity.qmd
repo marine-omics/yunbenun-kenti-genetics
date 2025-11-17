@@ -2,11 +2,13 @@
 title: "4 Genetic Diversity"
 author: "Sandra Erdmann"
 format: gfm
-editor: visual
+bibliography: references.bib
+editor: source
 editor_options: 
   chunk_output_type: inline
 execute:
   freeze: auto
+
 ---
 
 ```{r, echo=FALSE}
@@ -24,9 +26,9 @@ source("constants.R")
 
 # Genetic Diversity
 
-As a starting point for genetic diversity analyses we use the same filtered set of loci as was used for population structure analyses. Specifically;
+As a starting point for genetic diversity analyses we use the same filtered set of loci as was used for final population structure analyses. Specifically;
 
--   Filtered loci are the same because these have already been filtered to ensure that they are as reliable as possible while being mindful to avoid filters that would distort allele frequencies and hence bias genetic diversity estimates.
+-   These have already been filtered to ensure that they are as reliable as possible while being mindful to avoid filters that would distort allele frequencies and hence bias genetic diversity estimates.  This includes the HWE filter
 
 -   Individuals with admixture proportions that would indicate that they are migrants between MI and "other" populations have been removed. This is because these these individuals have uncertain origins (ie parents likely from a different reef to where they were found).
 
@@ -74,7 +76,7 @@ if (!file.exists("cache/ak.gen.mi.adj.rdata")){
   ak.gen.mi.adj <- gl.merge.pop(ak.gen.mi.adj, old=c("SO", "LPB", "EP", "WP", "HaR","BRR", "JB", "KR"), new='ADJ')
   ak.gen.mi.adj <- gl.filter.monomorphs(ak.gen.mi.adj)
   ak.gen.mi.adj <- gl.recalc.metrics(ak.gen.mi.adj)
-  save(ak.gen.mi.adj, file="cache/ak.gen.mi.adj.rdata")
+  write_rds(ak.gen.mi.adj,file = "basic_stats/ak.gen.mi.adj.rds")
 } else {
   load("cache/ak.gen.mi.adj.rdata")
 }
@@ -88,11 +90,16 @@ if (!file.exists("cache/ak.gen.mi.adj.rdata")){
 ak.pop.nm.hfstat <- gl2gi(ak.pop.nm) %>% genind2hierfstat()
 ak.gen.no.so.hfstat <- gl2gi(ak.gen.no.so)  %>% genind2hierfstat() 
 ak.gen.mi.adj.hfstat <- gl2gi(ak.gen.mi.adj) %>% genind2hierfstat()
+write_rds(list(ak.pop.nm.hfstat,ak.gen.no.so.hfstat,ak.gen.mi.adj.hfstat),"basic_stats/hfstat.rds")
 ```
+
+# Measures of Genetic Diversity as EBVs
+
+Genetic Diversity is one of four EBVs (Essential Biodiversity Variables) proposed by [@Hoban2022-ek]. It is composed of richness and evenness. Here, we calculate Allelic Richness (Ar) as a measure of richness and expected heterozygosity (He) as a measure of evenness.
 
 ## Allelic richness
 
-Our data comprise a set of biallelic SNPs which means that the maximum number of alleles at any locus is 2. Allelic richness for the entire dataset with no subdivisions should be exactly 2 since every SNP must have exactly 2 alleles in order to be included. Values of AR less than 2 come from the fact that some alleles will be missing when a subsample is made from the whole. The larger the sample the higher the value of AR so the `allelic.richness` function from hierfstat is used here. This calculates a rarefied value (accounting for sample size).
+Our data comprise a set of biallelic SNPs which means that the maximum number of alleles at any locus is 2. Allelic richness for the entire dataset with no subdivisions should be exactly 2 since every SNP must have exactly 2 alleles in order to be included. Values of AR less than 2 come from the fact that some alleles will be missing when a subsample is made from the whole. The larger the sample the higher the value of AR so the `allelic.richness` function from hierfstat is used here. This calculates a rarefied value (accounting for differences in sample size between populations).
 
 ```{r}
 # Calculate allelic richness
@@ -105,7 +112,7 @@ ar.mi.adj <- allelic.richness(ak.gen.mi.adj.hfstat)
 load("cache/sites_data.rdata")
 ```
 
-The plot below shows Ar statistics calculated by-reef. This clearly shows that values from Adjacent reefs (with the exception of West Pelorus) have consistently higher values than bays at Magnetic Island. This is notable because Ar declines rapidly is response to a reduction in population size.
+The plot below shows Ar statistics calculated by-reef. This clearly shows that values from Adjacent reefs (with the exception of West Pelorus) have consistently higher values than bays at Magnetic Island. This is notable because Ar declines rapidly in response to a reduction in population size.
 
 ```{r}
 summarise_pops <- function(coltable){
@@ -149,66 +156,95 @@ ar.mi.adj$Ar %>%
   colMeans(na.rm = TRUE)
 ```
 
-If we wanted to formally test whether Ar is higher at adjacent than at Magnetic Island we could use a permutation test. Here this is implemented by shuffling the `@pop` slot of the genind object which randomly reassigns (with replacement) all individuals to ADJ or MI.
+To formally test whether Ar is higher at adjacent than at Magnetic Island we use a permutation test. Here this is implemented by randomly reassigning individuals to populations.  To perform this shuffling we ran 1000 iterations with an R script [basic_stats/run_permute.R](run_permute.R) to perform each iteration.
 
-```{r, eval=FALSE}
-ak.gen.mi.adj.gi <- gl2gi(ak.gen.mi.adj)
-
-adj_vs_mi_shuff <- function(x){
-  x_pop <- as.character(x@pop)
-  shuff_pop <- sample(x_pop,length(x_pop),replace = TRUE)
-  x@pop <- as.factor(shuff_pop)
-  ar_shuff <- allelic.richness(x)
-  diff(colMeans(ar_shuff$Ar)) 
+```{r}
+if ( file.exists("cache/perm_data.rds")){
+# This reads all permutation data. Including for basic stats below
+  perm_data <- list.files("basic_stats/perms/",pattern = ".rds",full.names = TRUE) %>% 
+    map(read_rds)
+  write_rds(perm_data,"cache/perm_data.rds")
+} else {
+  perm_data <- read_rds("cache/perm_data.rds")
 }
+```
 
-library(foreach)
-library(doParallel)
+```{r}
+m_vs_adj_actual_value <- ar.mi.adj$Ar %>% colMeans(na.rm = TRUE) %>% diff()
+mi_adj_ar <- perm_data %>% map(~ colMeans(.x$adj.mi$Ar$Ar)) %>% 
+  bind_rows() %>% 
+  mutate(diff = abs(MI-ADJ)) 
 
-cl <- makeCluster(8)
-registerDoParallel(cl)
-
-results <- foreach(i = 1:100, .combine = c, .packages = c("hierfstat")) %dopar% {
-  adj_vs_mi_shuff(ak.gen.mi.adj.gi)
-}
-
-real_value <- ar.mi.adj$Ar %>% 
-  colMeans(na.rm = TRUE) %>% 
-  diff()
-
-p <-  (which(results < real_value) %>% length())/100
+p_mi_adj_ar <- (mi_adj_ar %>% 
+  filter(abs(diff)>abs(m_vs_adj_actual_value)) %>% nrow())/1000
 
 ```
 
-We performed 100 permutations and none gave a test statistic more extreme than the measured value. Thus p\<0.01 in this case.
+```{r}
+no_vs_so_actual_value <- (ar.no.so$Ar %>% colMeans(na.rm = TRUE))[c("no","so")] %>% diff()
+no_so_adj_ar <- perm_data %>% map(~ colMeans(.x$no.so$Ar$Ar)) %>% 
+  bind_rows() %>% 
+  mutate(no_vs_so = abs(no-so)) %>% 
+  mutate(diff = abs(no-so))
+
+p_no_so_ar <- (no_so_adj_ar %>% 
+  filter(diff>no_vs_so_actual_value) %>% nrow())/1000
+```
+
+This test reveals that the difference between MI and adjacent is highly significant (p<0.001) but for the contrast between north and south magnetic Island it is not.
+
+```{r}
+data.frame(contrast = c("MI vs ADJ","NO vs SO"), "Ar Diff" = c(m_vs_adj_actual_value,no_vs_so_actual_value), "p-value"=c(p_mi_adj_ar,p_no_so_ar)) %>% knitr::kable()
+```
+
 
 ## Heterozygosity
 
-Calculate heterozygosity-related stats
+Next we used the `basic.stats` function in `hierfstat` to calculate expected heterozygosity (He, also called Hs), observed heterozygosity (Ho) and Fis.  `He/Hs` is a measure of genetic evenness.  `Fis` is a measure of heterozygote deficiency.  We see that all populations show a background level of `Fis`
 
 ```{r}
 basic_stats <- basic.stats(ak.pop.nm.hfstat)
+basic_stats_adj.no.so <- basic.stats(ak.gen.no.so.hfstat)
+basic_stats_adj.mi <- basic.stats(ak.gen.mi.adj.hfstat)
 ```
+
 
 ```{r}
 # Assemble all stats into a table averaged by column
-ho.stats <- basic_stats$Ho %>% 
-  summarise_pops() %>% 
-  dplyr::rename(Ho = ".") 
+assemble_basic_stats <- function(bs){
+  ho.stats <- bs$Ho %>% 
+    summarise_pops() %>% 
+    dplyr::rename(Ho = ".") 
 
-he.stats <- basic_stats$Hs %>% 
-  summarise_pops() %>% 
-  dplyr::rename(He = ".") 
+  he.stats <- bs$Hs %>% 
+    summarise_pops() %>% 
+    dplyr::rename(He = ".") 
 
-fis.stats <- basic_stats$Fis %>% 
-  summarise_pops() %>% 
-  dplyr::rename(fis = ".") 
+  fis.stats <- bs$Fis %>% 
+    summarise_pops() %>% 
+    dplyr::rename(fis = ".") 
 
-allhet.stats <- ho.stats %>% 
-  left_join(he.stats) %>% 
-  left_join(fis.stats) %>% 
-  pivot_longer(all_of(c("He","Ho","fis")), names_to = "stat", values_to = "stat_value")
+  ho.stats %>% 
+    left_join(he.stats) %>% 
+    left_join(fis.stats) %>% 
+    pivot_longer(all_of(c("He","Ho","fis")), names_to = "stat", values_to = "stat_value")
+}
+
+# Gives aggregated values for three main population groupings
+allhet.stats_noso <- assemble_basic_stats(basic_stats_adj.no.so) %>% 
+  select(no_so_group = pop,stat,stat_value_agg = stat_value)
+
+# Collects aggregated and subdivided values together
+allhet.stats <- assemble_basic_stats(basic_stats) %>% 
+  mutate(no_so_group = case_when(
+    pop_group == "ADJ" ~ "ADJ",
+    pop %in% c("PB","GB","MR") ~ "so",
+    .default = "no"
+  )) %>% left_join(allhet.stats_noso)
+  
 ```
+
+First plot all stats subdivided by reef
 
 ```{r}
 allhet.stats %>% 
@@ -229,10 +265,11 @@ Alternatively we can present this as a boxplot
 
 ```{r}
 allhet.stats %>% 
-  ggplot(aes(x=pop_group,y=stat_value)) + 
-  geom_boxplot(aes(color=pop_group)) + 
+  ggplot(aes(x=no_so_group,y=stat_value)) + 
+  geom_boxplot(aes(color=no_so_group)) + 
+  geom_point(aes(y=stat_value_agg)) +
   facet_wrap(~stat, scales = "free") +
-  scale_color_manual(values = pop_colors, labels = pop_names) +
+#  scale_color_manual(values = pop_colors, labels = pop_names) +
   labs(
     x="",
     y="Stat Value"
@@ -240,6 +277,48 @@ allhet.stats %>%
   theme_minimal() +
   theme(legend.position = "top", legend.title = element_blank()) 
 ```
+
+Permutation tests were also used to calculate significance of differences for these statistics.  This is done on aggregated data, grouped into ADJ, NO and SO.  Note that Fis is always higher on aggregated data which suggests a Wahlund effect even though we have avoided lumping sampled from genetically differentiated populations.  
+
+```{r}
+test_basic_stat <- function(stat){
+  actual_values <- basic_stats_adj.mi[[stat]] %>% colMeans(na.rm = TRUE)
+  
+  mi_adj <- perm_data %>% map(~ colMeans(.x[["adj.mi"]][["basic_stats"]][[stat]])) %>% 
+    bind_rows() %>% 
+    mutate(diff = abs(MI-ADJ)) 
+
+  p_mi_adj <- (mi_adj %>% 
+    filter(abs(diff)>abs(diff(actual_values))) %>% nrow())/1000  
+  data.frame(stat,values=paste(actual_values, collapse = ";"),diff = diff(actual_values), "p"=p_mi_adj)
+}
+
+test_basic_stat_noso <- function(stat){
+  actual_values <- basic_stats_adj.no.so[[stat]] %>% colMeans(na.rm = TRUE)
+  
+  data_withdiffs <- perm_data %>% map(~ colMeans(.x[["no.so"]][["basic_stats"]][[stat]],na.rm = TRUE)) %>% 
+    bind_rows() %>% 
+    mutate(adj_no = abs(ADJ-no), adj_so = abs(ADJ-so),no_so = abs(no-so)) 
+
+  pval_adj_no <- (data_withdiffs %>% 
+    filter(abs(adj_no)>abs(diff(actual_values[c("ADJ","no")]))) %>% nrow())/1000  
+
+  pval_adj_so <- (data_withdiffs %>% 
+    filter(abs(adj_so)>abs(diff(actual_values[c("ADJ","so")]))) %>% nrow())/1000
+
+  pval_no_so <- (data_withdiffs %>% 
+    filter(abs(no_so)>abs(diff(actual_values[c("no","so")]))) %>% nrow())/1000
+  
+  data.frame(stat,contrast = c("adj_no","adj_so","no_so"), "p"=c(pval_adj_no,pval_adj_so,pval_no_so))
+}
+
+p_values <- map(c("Hs","Ho","Fis"),test_basic_stat_noso) %>% 
+  bind_rows() %>% 
+  pivot_wider(names_from = stat,values_from = p)
+knitr::kable(p_values)
+```
+
+
 
 ## Fixed allelic differences/Private alleles
 

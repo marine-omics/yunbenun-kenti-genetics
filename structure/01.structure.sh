@@ -1,3 +1,4 @@
+# Rough initial structure analysis for sorting individuals into main genetic pops
 
 structure -K 2 -L 5275 -N 465  -m ak.mainparams.txt -i ak.filtered.str -o ak.structure.k2.out
 

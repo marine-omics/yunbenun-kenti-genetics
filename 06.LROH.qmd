@@ -2,7 +2,7 @@
 title: "6 Long Runs of Homozygosity"
 author: "Ira Cooke"
 format: gfm
-editor: visual
+editor: source
 editor_options: 
   chunk_output_type: inline
 execute:
@@ -13,14 +13,15 @@ execute:
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
 ```
 
-
 ```{r}
 library(tidyverse)
 library(ggrepel)
+library(dartR.base)
+library(mHG)
 source("constants.R")
 ```
 
-This analysis must be performed from a vcf file as it requires genomic positions to be mapped.  Crucially, the analysis also makes use of estimated allele frequencies so we must run it separately for Magnetic Island and Palms populations.  Therefore we used the same filtered dataset as was used for Ne and genetic diversity analyses (same loci and individuals).
+This analysis must be performed from a vcf file as it requires genomic positions to be mapped. Crucially, the analysis also makes use of estimated allele frequencies so we must run it separately for Magnetic Island and Palms populations. Therefore we used the same filtered dataset as was used for Ne and genetic diversity analyses (same loci and individuals).
 
 First setup data we need
 
@@ -28,15 +29,13 @@ First setup data we need
 load(file = "cache/ak.gen.mi.adj.rdata")
 ```
 
-
 ```{r}
 # Write a table of samples mapped to pops for bcftools to use
 data.frame(id=ak.gen.mi.adj$ind.names,pop=ak.gen.mi.adj$pop) %>% 
   write.table(file = "lroh/id2pops.txt",row.names = FALSE, quote = FALSE)
 ```
 
-
-```bash
+``` bash
 cd lroh
 ln -s ../dart2vcf/ak.pop.nm.ind.vcf.gz .
 cat id2pops.txt |awk '$2=="ADJ"{print $1}' > palms_ancestry.txt
@@ -45,7 +44,7 @@ cat id2pops.txt |awk '$2=="MI"{print $1}' > maggie_ancestry.txt
 
 Now run `bcftools roh` to look for runs of homozygosity
 
-```
+```         
 bcftools roh -S palms_ancestry.txt -G30 --estimate-AF "GT,-" -O r ak.pop.nm.ind.vcf.gz | awk '$8>3' > palms_roh.tsv
 bcftools roh -S maggie_ancestry.txt -G30 --estimate-AF "GT,-" -O r ak.pop.nm.ind.vcf.gz | awk '$8>3' > maggie_roh.tsv
 ```
@@ -55,7 +54,7 @@ bcftools roh -S maggie_ancestry.txt -G30 --estimate-AF "GT,-" -O r ak.pop.nm.ind
 load("cache/metadata.rdata")
 ```
 
-This analysis reveals runs of homozygosity in a high proportion of samples.  The total proportion of the genome in ROH is typically low <1Mb = 0.2% but in some individuals is up to 20MB ~ 4%.  Interestingly the individuals with the highest ROH occur in Geoffrey Bay and Picnic Bay, the two south Maggie Sites where we see very low Ne.  While there are also a few individuals with similarly high LROH in the Palms group this probably reflects the very high sample size here
+This analysis reveals runs of homozygosity in a high proportion of samples. The total proportion of the genome in ROH is typically low \<1Mb = 0.2% but in some individuals is up to 20MB \~ 4%. Interestingly the individuals with the highest ROH occur in Geoffrey Bay and Picnic Bay, the two south Maggie Sites where we see very low Ne. While there are also a few individuals with similarly high LROH in the Palms group this probably reflects the very high sample size there.
 
 ```{r}
 palms_roh <- read_tsv("lroh/palms_roh.tsv",comment = "#",col_names = c("rg","id","chr","start","end","length","n_markers","phred"),show_col_types = F)
@@ -65,10 +64,10 @@ roh <- rbind(palms_roh,magie_roh) %>%
   left_join(metadata,by=c("id"="ID"))
 ```
 
-
 ```{r}
 roh_filtered <- roh %>% 
-  filter(phred>20) %>% 
+#  filter(phred>5) %>% 
+#  filter(n_markers>10) %>% 
   group_by(id,pop) %>% 
   summarise(tot_len = sum(length)) %>% 
   mutate(pop_order = location_order[pop]) %>% 
@@ -80,12 +79,11 @@ roh_filtered <- roh %>%
     pop %in% maggie_no_sites ~ "NO",
     pop %in% maggie_so_sites ~ "SO",
     .default = "ADJ"
-  )) 
+  ))
 
 outlier_data <- roh_filtered %>% 
-  filter(tot_len>1.1e7)
+  filter(tot_len>2e7)
 ```
-
 
 ```{r}
 roh_filtered %>% 
@@ -102,7 +100,7 @@ roh_filtered %>%
   theme(legend.position = "top", legend.title = element_blank())
 ```
 
-Instead of breaking this down by sampling location we can instead just look by key locations where we found differences in Ne.  Here we see that the mean LROH follows the inverse trend to Ne
+Instead of breaking this down by sampling location we can instead just look by key locations where we found differences in Ne. Here we see that the mean LROH follows the inverse trend to Ne
 
 ```{r}
 roh_filtered %>% 
@@ -119,3 +117,49 @@ roh_filtered %>%
   theme(legend.position = "top", legend.title = element_blank())
 ```
 
+```{r}
+model <- lm(tot_len ~ mi_no_adj,roh_filtered)
+anova(model)
+```
+
+It is difficult to know what threshold to filter these ROH. Our power to detect ROH is quite low due to the sparsity of markers. If we filter to only the most significant ROH these are found in just two individuals in South Magnetic Island. One way to work around this is to test whether a list of ROH is enriched in entries from Magnetic Island. For this we use the mHG package following the method of Eden 2007 Eden, E. (2007). Discovering Motifs in Ranked Lists of DNA Sequences. Haifa. Retrieved from http://bioinfo.cs.technion.ac.il/people/zohar/thesis/eran.pdf (pages 10-12, 18-20). Since there are potentially multiple ROH per individual we choose only the mighest PHRED scoring ROH per individual for this test.
+
+```{r}
+roh_best <- roh %>%  
+  mutate(mi_adj = case_when(
+    pop %in% maggie_sites ~ "MI",
+    .default = "ADJ"
+  )) %>% 
+  mutate(mi_no_adj = case_when(
+    pop %in% maggie_no_sites ~ "NO",
+    pop %in% maggie_so_sites ~ "SO",
+    .default = "ADJ"
+  )) %>% 
+  group_by(id,mi_adj) %>% 
+  slice_max(order_by = phred,n=1,with_ties = FALSE)
+
+roh_best %>% 
+  filter(phred>10) %>% 
+  ggplot(aes(x=reorder(id,phred))) +
+  geom_col(aes(y=phred,fill=mi_no_adj))
+#  geom_density(aes(fill=mi_adj),alpha=0.5)
+```
+
+```{r}
+roh_binary <- roh %>% 
+  mutate(mi_adj = case_when(
+    pop %in% maggie_so_sites ~ 1,
+    .default = 0
+  )) %>% 
+  group_by(id,mi_adj) %>% 
+  summarise(phred = max(phred)) %>% 
+  arrange(desc(phred)) %>% 
+  pull(mi_adj)
+
+mHG.test(roh_binary)
+```
+
+```{r}
+roh_filtered %>% 
+
+```

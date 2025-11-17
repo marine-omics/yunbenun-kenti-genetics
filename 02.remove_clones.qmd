@@ -2,7 +2,8 @@
 title: "Remove replicated (clonal) individuals"
 author: "Sandra Erdmann and Ira Cooke"
 format: gfm
-editor: visual
+bibliography: references.bib
+editor: source
 editor_options: 
   chunk_output_type: inline
 execute:
@@ -11,7 +12,7 @@ execute:
 
 ## Load Libraries
 
-```{r}
+```{r, results='hide'}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
 library(dartRverse)
 library(tidyverse)
@@ -19,7 +20,7 @@ library(ggraph)
 library(igraph)
 ```
 
-```{r}
+```{r, results='hide'}
 load("cache/ak.filtered.rdata")
 ```
 
@@ -73,7 +74,7 @@ maggie_rel <- read_tsv("relatedness/ak.filtered.maggie_ancestry.relatedness2") %
 all_rel <- rbind(palms_rel,maggie_rel)
 ```
 
-Relatedness numbers don't conform to ideal expectations. There are a lot of negative values which is probably due to additional population structure within palms/maggie. Nevertheless we can see a main peak around 0 which represents the bulk of individuals which are probably unrelated. Highly related individuals and potential clones show up as an additional peak above relatedness values around 0.25. In both plots this peak is quite distinct from the bulk of sample pairs.
+Relatedness numbers don't conform to ideal expectations. There are a lot of negative values which is a known consequence of estimating allele frequencies from a sample, particularly if the sample includes some family structure or inbreeding. In such cases unrelated individuals are expected to have a negative relatedness [@Wang2014-mm]. Nevertheless we can see a main peak around 0 which represents the bulk of individuals which are probably unrelated. Highly related individuals and potential clones show up as an additional peak above relatedness values around 0.25. In both plots this peak is quite distinct from the bulk of sample pairs.
 
 ```{r}
 all_rel %>% 
@@ -87,10 +88,13 @@ rel_connected <- all_rel %>%
   filter(RELATEDNESS_PHI>0.25)
 
 rel_graph <- graph_from_data_frame(rel_connected)
-ggraph(rel_graph) + geom_edge_link() + geom_node_point(color="red")
+ggraph(rel_graph) + 
+  geom_edge_link() + 
+  geom_node_point(color="red") + 
+  geom_node_text(aes(label=name),size=1,repel = TRUE)
 ```
 
-This gives a total of 96 individuals in 33 clusters. In order to pick a representative from each of these clusters we need to calculate missingness for all samples which we do using vcftools
+This gives a total of 96 individuals in 32 clusters. In order to pick a representative from each of these clusters we need to calculate missingness for all samples which we do using vcftools
 
 ``` bash
 vcftools --gzvcf ak.filtered.vcf.gz --missing-indv --out ak.filtered
@@ -103,10 +107,11 @@ ak.filtered.imiss <- read_tsv("relatedness/ak.filtered.imiss")
 Joining missingness information with cluster membership allows us to identify representatives of each cluster and then make a list of all other individuals which will need to be removed from further analysis
 
 ```{r}
-representative_samples <- data.frame(cluster=components(rel_graph)$membership) %>% rownames_to_column("INDV") %>% 
+representative_samples <- data.frame(cluster=components(rel_graph)$membership) %>% 
+  rownames_to_column("INDV") %>% 
   left_join(ak.filtered.imiss) %>% 
   group_by(cluster) %>% 
-  slice_min(F_MISS,n=1) %>% 
+  slice_min(F_MISS,n=1,with_ties = FALSE) %>% 
   pull(INDV)
 
 excluded_samples <- setdiff(rel_connected$INDV1,representative_samples)  
@@ -118,18 +123,8 @@ excluded_samples %>%
 
 ## Create new genlight object with replicates/clones removed
 
-```{r}
-ak.filtered.nr <- gl.drop.ind(ak.filtered, excluded_samples)
-```
-
-```{r}
-# Filter for monomorphs
-ak.filtered.nr <- gl.filter.monomorphs(ak.filtered.nr)
-```
-
-```{r}
-# Recalculate locus metrics
-ak.filtered.nr <- gl.recalc.metrics(ak.filtered.nr)
+```{r,results='hide'}
+ak.filtered.nr <- gl.drop.ind(ak.filtered, excluded_samples, recalc = TRUE, mono.rm = TRUE)
 ```
 
 ```{r}
@@ -161,10 +156,6 @@ nLoc(ak.pop)
 
 ```{r}
 table(pop(ak.pop))
-```
-
-```{r}
-indNames(ak.pop)
 ```
 
 ```{r}

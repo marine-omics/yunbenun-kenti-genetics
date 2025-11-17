@@ -10,7 +10,8 @@ location_order <- 1:15
 names(location_order) <- c("BRR","EP","WP","LPB","SO","JB","KR","HaR","HFB","WB","MB","HB","GB","PB","MR")
 
 # Assign a certain colour to the clusters, so that cluster1 is consistently blue and cluster2 orange
-cluster_colors <- c("blue","orange")
+cluster_colors <- c("C1"="blue","C2"="orange")
+cluster_names <- c("C1"="Adjacent Reefs","C2"="Magnetic Island")
 
 maggie_sites <- c("HFB","WB","MB","HB","GB","PB","MR")
 maggie_no_sites <- c("HFB","WB","MB","HB")
