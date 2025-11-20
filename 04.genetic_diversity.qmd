@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FAL
 
 ```{r, echo=FALSE}
 ## Load Libraries
-library(dartRverse)
+#library(dartRverse)
 library(dartR.base)
 library(hierfstat)        # allelic richness
 library(tidyverse)
@@ -112,8 +112,6 @@ ar.mi.adj <- allelic.richness(ak.gen.mi.adj.hfstat)
 load("cache/sites_data.rdata")
 ```
 
-The plot below shows Ar statistics calculated by-reef. This clearly shows that values from Adjacent reefs (with the exception of West Pelorus) have consistently higher values than bays at Magnetic Island. This is notable because Ar declines rapidly in response to a reduction in population size.
-
 ```{r}
 summarise_pops <- function(coltable){
   coltable %>% 
@@ -124,36 +122,13 @@ summarise_pops <- function(coltable){
 }
 ```
 
-```{r}
-# Show summary of Ar statistics
-ar$Ar %>% 
-  summarise_pops() %>% 
-  dplyr::rename(Ar = ".") %>% 
-  ggplot(aes(x=reorder(pop,pop_order),y=Ar)) + 
-  geom_point(aes(color=pop_group)) + 
-  scale_color_manual(values = pop_colors, labels = pop_names) +
-  labs(
-    x="Reef",
-    y="Rarefied Allelic Richness, Ar"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank(), legend.position = "top")
-```
 
-When we aggregate reefs into population groupings such as "Adjacent Reefs", and North/South Maggie we get higher Ar values because the rarefaction correction is based on the smallest unit.
-
-Calculating Ar for North/South Maggie suggests that Ar might actually be higher in the South but the difference is very small.
+Since Ar is heavily impacted by sample size we avoid super small samples on individual reefs and report population groupings such as "Adjacent Reefs",  North and South Maggie.
 
 ```{r}
-(ar.no.so$Ar %>% 
-  colMeans(na.rm = TRUE))[c("so","no")]
-```
-
-And for the dataset where Adjacent and Maggie are grouped we recapitulate the broad result that Adjacent Reefs have higher Ar than Magnetic Island, this time the difference is substantial.
-
-```{r}
-ar.mi.adj$Ar %>% 
-  colMeans(na.rm = TRUE)
+ar_means <- (ar.no.so$Ar %>% 
+  colMeans(na.rm = TRUE))
+data.frame(pop=names(ar_means),Ar = ar_means) %>% knitr::kable()
 ```
 
 To formally test whether Ar is higher at adjacent than at Magnetic Island we use a permutation test. Here this is implemented by randomly reassigning individuals to populations.  To perform this shuffling we ran 1000 iterations with an R script [basic_stats/run_permute.R](run_permute.R) to perform each iteration.
@@ -278,7 +253,7 @@ allhet.stats %>%
   theme(legend.position = "top", legend.title = element_blank()) 
 ```
 
-Permutation tests were also used to calculate significance of differences for these statistics.  This is done on aggregated data, grouped into ADJ, NO and SO.  Note that Fis is always higher on aggregated data which suggests a Wahlund effect even though we have avoided lumping sampled from genetically differentiated populations.  
+Permutation tests were also used to calculate significance of differences for these statistics.  This is done on aggregated data, grouped into ADJ, NO and SO.  Note the somewhat unexpected result that the smaller populations at Magnetic Island show slightly higher heterozygosity and lower Fis than the larger Adjacent population.  Note that this effect is numerically very small, and likely reflects expected heterozygote excess in small populations due to differences in allele frequencies between sexes as a result of binomial sampling error.  This effect applies equally to self-incompatible hermaphroditic species [@Balloux2004-yn] such as Acroporid corals and forms the basis of the heterozygote excess method for calculating Ne [@Luikart1999-yh]
 
 ```{r}
 test_basic_stat <- function(stat){

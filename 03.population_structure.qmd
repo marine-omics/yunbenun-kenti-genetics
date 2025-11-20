@@ -15,7 +15,7 @@ execute:
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
 
 library(tidyverse)
-library(dartRverse)
+#library(dartRverse)
 library(dartR.base)
 library(ggpubr)
 library(sf)
@@ -268,14 +268,14 @@ run12_meta %>%
 ```{r}
 maggie_admixed_and_migrants <- run12_meta %>% 
   filter(pop %in% maggie_sites) %>% 
-  filter(cluster=="C1") %>% 
+  filter(cluster=="C2") %>% 
   filter(p>0.05) %>% 
   pull(ID)
 
 # And do the same for adjacent reef populations
 adjacent_admixed_and_migrants <- run12_meta %>% 
   filter(!(pop %in% maggie_sites)) %>% 
-  filter(cluster=="C2") %>% 
+  filter(cluster=="C1") %>% 
   filter(p>0.05) %>% 
   pull(ID)
 ```
@@ -314,6 +314,7 @@ if ( file.exists("cache/ak.pop.nm.rdata")){
 
   # We want to keep the same pop groupings as our original data. So just use the same loci as the hwe filtered dataset
   ak.pop.nm <- gl.keep.loc(ak.pop.nm,loc.list = ak.gen.nm.mi_adj.filt$loc.names)
+  ak.pop.nm <- gl.recalc.metrics(ak.pop.nm, mono.rm = TRUE)
   
   save(ak.pop.nm, file="cache/ak.pop.nm.rdata")
   write_rds(ak.pop.nm,file = "fst/ak.pop.nm.rds")
