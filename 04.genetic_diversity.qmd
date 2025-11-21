@@ -17,7 +17,6 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FAL
 
 ```{r, echo=FALSE}
 ## Load Libraries
-#library(dartRverse)
 library(dartR.base)
 library(hierfstat)        # allelic richness
 library(tidyverse)
@@ -76,6 +75,7 @@ if (!file.exists("cache/ak.gen.mi.adj.rdata")){
   ak.gen.mi.adj <- gl.merge.pop(ak.gen.mi.adj, old=c("SO", "LPB", "EP", "WP", "HaR","BRR", "JB", "KR"), new='ADJ')
   ak.gen.mi.adj <- gl.filter.monomorphs(ak.gen.mi.adj)
   ak.gen.mi.adj <- gl.recalc.metrics(ak.gen.mi.adj)
+  save(ak.gen.mi.adj,file = "cache/ak.gen.mi.adj.rdata")
   write_rds(ak.gen.mi.adj,file = "basic_stats/ak.gen.mi.adj.rds")
 } else {
   load("cache/ak.gen.mi.adj.rdata")

@@ -50,7 +50,6 @@ bcftools roh -S maggie_ancestry.txt -G30 --estimate-AF "GT,-" -O r ak.pop.nm.ind
 ```
 
 ```{r}
-#load("cache/sites_data.rdata")
 load("cache/metadata.rdata")
 ```
 
@@ -66,8 +65,7 @@ roh <- rbind(palms_roh,magie_roh) %>%
 
 ```{r}
 roh_filtered <- roh %>% 
-#  filter(phred>5) %>% 
-#  filter(n_markers>10) %>% 
+  filter(phred>20) %>% 
   group_by(id,pop) %>% 
   summarise(tot_len = sum(length)) %>% 
   mutate(pop_order = location_order[pop]) %>% 
@@ -139,7 +137,7 @@ roh_best <- roh %>%
   slice_max(order_by = phred,n=1,with_ties = FALSE)
 
 roh_best %>% 
-  filter(phred>10) %>% 
+  filter(phred>20) %>% 
   ggplot(aes(x=reorder(id,phred))) +
   geom_col(aes(y=phred,fill=mi_no_adj))
 #  geom_density(aes(fill=mi_adj),alpha=0.5)
@@ -147,6 +145,7 @@ roh_best %>%
 
 ```{r}
 roh_binary <- roh %>% 
+  filter(phred>20) %>% 
   mutate(mi_adj = case_when(
     pop %in% maggie_so_sites ~ 1,
     .default = 0
@@ -157,9 +156,4 @@ roh_binary <- roh %>%
   pull(mi_adj)
 
 mHG.test(roh_binary)
-```
-
-```{r}
-roh_filtered %>% 
-
 ```
