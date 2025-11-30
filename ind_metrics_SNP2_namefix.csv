@@ -1,0 +1,529 @@
+id,pop,lat,lon,sex,maturity,location
+WB_36,WB,-19.1167,146.814932,Unknown,Adult,Magnetic Island
+A1,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A10,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A100,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A101,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A102,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A105,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A106,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A107,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A108,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A109,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A11,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A111,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A112,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A113,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A114,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A116,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A117,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A120,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A122,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A123,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A124,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A125,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A126,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A127,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A13,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A130,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A132,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A134,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A135,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A136,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A138,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A139,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A140,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A141,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A142,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A145,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A146,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A148,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A149,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A15,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A150,LPB,-18.59814,146.4849789,Unknown,Adult,Orpheus
+A151,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A152,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A153,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A154,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A155,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A156,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A159,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A160,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A161,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A164,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A166,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A167,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A168,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A169,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A17,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A18,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A19,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A2,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A21,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A22,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A23,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A24,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A25,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A28,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A29,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A3,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A31,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A7,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A8,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A82,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A84,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A85,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A88,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A89,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A9,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+A90,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A92,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+A99,WP,-18.55417,146.48845,Unknown,Adult,Pelorus
+At_11_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_12_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_14_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_154_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_157_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_158_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_16_F,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_162_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_162_J20.1,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_163_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_163_J20.1,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_165_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_17_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_170_N,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_20_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_23_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_24_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_25_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_27_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_29_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_30_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_31_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_32_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_33_F,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_33_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_34_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_34_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_35_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_35_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_36_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_37_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_38_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_38_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_39_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_4_F,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_4_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_40_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_41_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_41_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_42_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_43_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_43_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_44_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_45_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_45_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_46_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_47_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_48_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_48_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_49_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_49_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_5_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_50_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_51_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_51_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_52_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_53_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_53_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_54_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_54_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_55_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_55_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_56_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_57_F,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_57_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_58_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_58_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_59_J20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_6_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_6_N,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_60_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_61_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_62_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_62_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_63_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_65_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_66_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_66_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_67_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_67_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_69_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_7_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_70_N,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_71_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_71_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_72_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_72_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_73_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_74_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_75_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_75_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_76_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_76_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_77_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_78_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_78_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_79_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_8_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_80_A,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_80_F20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_9_J20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_D26_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_D27_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_D28_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_D29_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_D30_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_D31_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D32_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D33_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D34_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D35_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D36_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D37_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D38_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D39_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D40_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D41_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D42_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D43_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D44_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D45_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D46_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_D47_3.20,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O10,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O16,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_O17,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_O18,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_O19,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_O20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_O3,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_O42,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O43,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O44,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O45,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O47,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O48,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O49,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O50,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O51,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O52,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O53,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O55,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O56,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O57,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O62,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O73,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O76,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_O78,EP,-18.550037,146.504312,Unknown,Adult,Pelorus
+At_S1_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S10_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S11_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S12_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S13_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S14_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S15_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S16_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S17_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S18_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S19_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S2_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S20_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S21_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S22_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S23_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S24_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S25_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S3_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S4_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S5_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S6_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S7_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S8_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+At_S9_3.20,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B1,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B10,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B11,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B15,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B17,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B18,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B19,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B2,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B21,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B3,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B7,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B8,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+B9,SO,-18.661791,146.499811,Unknown,Adult,Orpheus
+BRR_1,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_10,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_13,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_26,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_27,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_28,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_31,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_36,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_38,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_39,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_4,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_40,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_41,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_42,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_43,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_44,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_46,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_47,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_48,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_5,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+BRR_9,BRR,-18.43748,146.722122,Unknown,Adult,Bramble Reef
+GB_03/03/2022_1,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_10,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_11,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_12,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_13,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_14,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_15,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_16,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_17,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_18,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_19,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_2,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_20,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_21,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_22,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_23,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_26,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_27,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_28,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_29,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_3,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_30,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_31,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_32,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_4,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_5,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_6,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_7,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+GB_03/03/2022_8,GB,-19.154562,146.866242,Unknown,Adult,Magnetic
+HaR_06/05/2022_1,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_10,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_11,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_12,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_15,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_19,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_20,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_23,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_24,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_25,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_29,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_31,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_32,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_33,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_34,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_35,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_36,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_37,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_38,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_40,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_41,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_42,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_43,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_44,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_50,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_7,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_8,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HaR_06/05/2022_9,HaR,-18.841659,146.538325,Unknown,Adult,Orpheus
+HB_1,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_10,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_11,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_2,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_10,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_11,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_12,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_13,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_14,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_15,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_16,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_17,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_18,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_19,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_20,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_21,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_22,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_23,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_24,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_25,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_26,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_27/11/21_28,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_3,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_4,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_5,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_6,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_7,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_8,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HB_9,HB,-19.105807,146.861924,Unknown,Adult,Magnetic
+HFB_1,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_10,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_11,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_12,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_13,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_14,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_16,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_17,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_18,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_19,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_2,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_20,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_21,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_22,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_23,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_24,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_25,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_4,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_5,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_6,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_7,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_8,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+HFB_9,HFB,-19.117288,146.788912,Unknown,Adult,Magnetic
+JB_11,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_12,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_13,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_14,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_18,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_20,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_21,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_29,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_3,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_31,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_38,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_4,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_41,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_42,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_43,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_44,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_45,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_46,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_49,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_50,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+JB_7,JB,-18.629351,147.055422,Unknown,Adult,John Brewer
+KR_29/03/2022_26,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_27,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_28,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_29,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_30,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_31,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_32,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_33,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_34,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_35,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_36,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_41,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_42,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_43,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_44,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_45,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_46,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_47,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_48,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_49,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+KR_29/03/2022_50,KR,-18.749037,147.269393,Unknown,Adult,Keeper Reef
+MB_1,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_10,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_12,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_13,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_17,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_18,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_19,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_2,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_20,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_21,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_22,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_24,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_27,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_33,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_34,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_5,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_6,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MB_9,MB,-19.105807,146.831924,Unknown,Adult,Magnetic
+MR_14/03/2022_1,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_10,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_11,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_12,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_13,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_3,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_34,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_35,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_37,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_38,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_39,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_4,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_41,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_44,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_45,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_46,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_47,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_48,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_49,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_5,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_50,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_6,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_7,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_8,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+MR_14/03/2022_9,MR,-19.197296,146.815235,Unknown,Adult,Magnetic Island
+PB_05/04/22_40,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_41,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_42,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_43,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_44,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_45,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_46,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_47,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_48,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_49,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_05/04/22_50,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_01,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_02,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_04,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_06,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_07,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_08,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_09,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_11,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_12,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_13,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_14,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_26,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_28,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_30,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+PB_25/11/21_32,PB,-19.185343,146.835559,Unknown,Adult,Magnetic
+WB_03/04/2022_11,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_13,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_14,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_16,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_20,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_21,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_22,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_23,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_24,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_25,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_26,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_27,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_3,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_30,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_31,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_32,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_35,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_36,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_37,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_38,WB,-19.1167,146.814932,Unknown,Adult,Magnetic
+WB_03/04/2022_8,WB,-19.1167,146.814932,Unknown,Adult,Magnetic

@@ -1,0 +1,163 @@
+---
+title: "Remove replicated (clonal) individuals"
+author: "Sandra Erdmann and Ira Cooke"
+format: gfm
+bibliography: references.bib
+editor: source
+editor_options: 
+  chunk_output_type: inline
+execute:
+  freeze: auto
+---
+
+## Load Libraries
+
+```{r, results='hide'}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+library(dartRverse)
+library(tidyverse)
+library(ggraph)
+library(igraph)
+```
+
+```{r, results='hide'}
+load("cache/ak.filtered.rdata")
+```
+
+## Identify close relatives/replicates
+
+Accurate identification of clones and close relatives relies on estimates of population allele frequencies. From past studies we can assume that there is strong population structure dividing two main populations. We therefore perform an initial structure analysis to assign individuals to these populations for the purposes of calculating relatedness statistics.
+
+```{r, eval=FALSE}
+gl2structure(ak.filtered, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.filtered.str", outpath = "structure", verbose = NULL)
+```
+
+Then run structure as follows
+
+``` bash
+structure -K 2 -L 5275 -N 465  -m ak.mainparams.txt -i ak.filtered.str -o ak.structure.k2.out
+```
+
+Read back the structure results and create tables assigning individuals to one of the two populations
+
+```{r}
+samples <- read_table("structure/ak.filtered.samples.txt",col_names = c("ID"))
+
+structure_ak_filtered <- read_table("structure/ak.structure.k2.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2"),skip = 2) %>% 
+  cbind(samples)
+
+# C2 is Maggie, C1 is Palms
+
+maggie_ind <- structure_ak_filtered %>% 
+  filter(C2>0.5) %>% pull(ID)
+palms_ind <- structure_ak_filtered %>% 
+  filter(C1>0.5) %>% pull(ID)
+
+write.table(maggie_ind,file = "relatedness/maggie_ind.txt",row.names = FALSE,col.names = FALSE, quote = FALSE)
+write.table(palms_ind,file = "relatedness/palms_ind.txt",row.names = FALSE,col.names = FALSE, quote = FALSE)
+```
+
+Next we use the program `vcftools` to calculate relatedness for Maggie and Palms individuals separately (see scripts in directory `relatedness`)
+
+``` bash
+vcftools --gzvcf ak.filtered.vcf.gz --relatedness2 --keep maggie_ind.txt --out ak.filtered.maggie_ancestry
+vcftools --gzvcf ak.filtered.vcf.gz --relatedness2 --keep palms_ind.txt --out ak.filtered.palms_ancestry
+```
+
+```{r}
+palms_rel <- read_tsv("relatedness/ak.filtered.palms_ancestry.relatedness2") %>% 
+  filter(INDV1 != INDV2) %>% add_column(pop="palms")
+
+maggie_rel <- read_tsv("relatedness/ak.filtered.maggie_ancestry.relatedness2") %>% 
+  filter(INDV1 != INDV2) %>% add_column(pop="maggie")
+
+all_rel <- rbind(palms_rel,maggie_rel)
+```
+
+Relatedness numbers don't conform to ideal expectations. There are a lot of negative values which is a known consequence of estimating allele frequencies from a sample, particularly if the sample includes some family structure or inbreeding. In such cases unrelated individuals are expected to have a negative relatedness [@Wang2014-mm]. Nevertheless we can see a main peak around 0 which represents the bulk of individuals which are probably unrelated. Highly related individuals and potential clones show up as an additional peak above relatedness values around 0.25. In both plots this peak is quite distinct from the bulk of sample pairs.
+
+```{r}
+all_rel %>% 
+  ggplot(aes(x=RELATEDNESS_PHI)) + geom_histogram(aes(fill=pop),binwidth = 0.05) + scale_y_log10() + facet_wrap(~pop)
+```
+
+Next we plot relationships among highly related individuals as a graph. This is because not all such highly related groups are pairs. Sometimes there are more than 2 individuals within a clonal cluster. We need to identify these clusters so that we can pick one representative from each
+
+```{r}
+rel_connected <- all_rel %>% 
+  filter(RELATEDNESS_PHI>0.25)
+
+rel_graph <- graph_from_data_frame(rel_connected)
+ggraph(rel_graph) + 
+  geom_edge_link() + 
+  geom_node_point(color="red") + 
+  geom_node_text(aes(label=name),size=1,repel = TRUE)
+```
+
+This gives a total of 96 individuals in 32 clusters. In order to pick a representative from each of these clusters we need to calculate missingness for all samples which we do using vcftools
+
+``` bash
+vcftools --gzvcf ak.filtered.vcf.gz --missing-indv --out ak.filtered
+```
+
+```{r}
+ak.filtered.imiss <- read_tsv("relatedness/ak.filtered.imiss")
+```
+
+Joining missingness information with cluster membership allows us to identify representatives of each cluster and then make a list of all other individuals which will need to be removed from further analysis
+
+```{r}
+representative_samples <- data.frame(cluster=components(rel_graph)$membership) %>% 
+  rownames_to_column("INDV") %>% 
+  left_join(ak.filtered.imiss) %>% 
+  group_by(cluster) %>% 
+  slice_min(F_MISS,n=1,with_ties = FALSE) %>% 
+  pull(INDV)
+
+excluded_samples <- setdiff(rel_connected$INDV1,representative_samples)  
+
+excluded_samples %>% 
+  as.data.frame() %>% 
+  write_tsv(file = "relatedness/excluded_relatives.tsv",col_names = FALSE)
+```
+
+## Create new genlight object with replicates/clones removed
+
+```{r,results='hide'}
+ak.filtered.nr <- gl.drop.ind(ak.filtered, excluded_samples, recalc = TRUE, mono.rm = TRUE)
+```
+
+```{r}
+nInd(ak.filtered.nr)
+nLoc(ak.filtered.nr)
+```
+
+```{r}
+gl.smearplot(ak.filtered.nr)
+```
+
+## Remove missing loci
+
+A DArT dataset will not have individuals for which the calls are scored as missing (NA) across all loci, but such individuals may sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions
+
+In this case there are no such individuals
+
+```{r}
+# Filter for missing loci
+ak.pop <-gl.filter.allna(ak.filtered.nr)
+```
+
+## Inspect filtered file
+
+```{r}
+nInd(ak.pop)
+nLoc(ak.pop)
+```
+
+```{r}
+table(pop(ak.pop))
+```
+
+```{r}
+save(ak.filtered.nr, file="cache/ak.filtered.nr.rdata")
+```
