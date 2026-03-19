@@ -29,6 +29,7 @@ For population structure we begin by loading the filtered data with redundant in
 
 ```{r, echo=TRUE}
 load("cache/ak.filtered.nr.rdata")
+write_tsv(data.frame(id=ak.filtered.nr$ind.names),file = "nodups_ids.txt")
 ```
 
 # Analysis of broadscale structure using the full dataset
@@ -65,7 +66,9 @@ lldata %>%
   summarise(deltaK = mean(abs(deltaL))/var(logLik)) %>% 
   na.omit() %>% 
   ggplot(aes(x=k,y=deltaK)) + 
-    geom_point() + geom_line() + xlab("Number of clusters, K") + ylab(expression(paste(Delta,"K")))
+    geom_point() + geom_line() + xlab("Number of clusters, K") + ylab(expression(paste(Delta,"K"))) +
+  theme_bw()
+ggsave("figures/figure_s1A.svg",width = 5,height = 5)
 ```
 
 ## Admixture plot for K=2
@@ -155,6 +158,8 @@ names(location_order) <- c("BRR","EP","WP","LPB","SO","JB","KR","HaR","HFB","WB"
 Create a stacked barplot to show admixture proportions
 
 ```{r}
+write_rds(run12_meta,file = "cache/run12_meta.rds")
+
 run12_meta %>% 
   mutate(pop_order = location_order[pop]) %>% 
   ggplot(aes(x = ID, y = p)) +
@@ -164,6 +169,7 @@ run12_meta %>%
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + 
   theme(strip.text = element_text(size=6)) +
   xlab("Sample ID") + ylab("Admixture Proportion") + labs(fill=NULL)
+
 ```
 
 ```{r}
@@ -226,7 +232,10 @@ pcoa_ak_filtered_nr_meta %>%
   scale_color_manual(values = cluster_colors, labels = cluster_names) +
   xlab(paste("PC1 (",round(pcoa_var[1]*100,1)," %)",sep="")) +
   ylab(paste("PC2 (",round(pcoa_var[2]*100,1)," %)",sep="")) + 
-  labs(color=NULL)
+  labs(color=NULL) + 
+  theme_bw() + 
+  theme(legend.position = "bottom")
+ggsave(filename = "figures/figure1_inset.svg",width = 80,height = 80,units = "mm")
 ```
 
 # Removing migrants and highly admixed individuals
@@ -279,7 +288,60 @@ adjacent_admixed_and_migrants <- run12_meta %>%
   pull(ID)
 ```
 
-In addition to these 7 highly admixed individuals we found a further 17 migrants. In total we removed 9 individuals from adjacent reefs and 14 from Magnetic Island.
+In addition to these 7 highly admixed individuals we found a further 16 migrants (13 Maggie, 3 in Adjacent). In total we removed 9 individuals from adjacent reefs and 14 from Magnetic Island.
+
+
+## Summary of admixture
+
+If we look at the minor admixture fraction for all individuals we find that 
+
+1. Most individuals have no detectable admixture at all
+2. Among those with detectable admixture the vast majority have an extremely small (<5% minor fraction)
+
+```{r}
+minor_fraction <- run12_meta %>% 
+  group_by(ID) %>% 
+  mutate(minor_p = min(p)) %>% 
+  filter(minor_p==p)
+```
+
+Fraction of individuals with no admixture
+
+```{r}
+minor_fraction %>% 
+  group_by(cluster) %>% 
+  mutate(cluster_n = n()) %>% 
+  filter(minor_p==0) %>% 
+  summarise(n=n(), fraction = n()/cluster_n) %>% 
+  unique() %>% knitr::kable()
+```
+Fraction of individuals with background (<5%) admixture
+
+```{r}
+minor_fraction %>% 
+  group_by(cluster) %>% 
+  mutate(cluster_n = n()) %>% 
+  filter(minor_p<0.05) %>%
+  filter(minor_p>0) %>% 
+  summarise(n=n(), fraction = n()/cluster_n) %>% 
+  unique() %>% knitr::kable()
+```
+
+```{r}
+new_hybs <- minor_fraction %>% 
+  mutate(pop_order = location_order[pop]) %>% 
+  filter(minor_p>0.05)
+
+pdata <- minor_fraction %>% 
+  filter(minor_p>0) %>% 
+  mutate(pop_order = location_order[pop]) 
+
+pdata %>% 
+  ggplot(aes(x=reorder(pop,pop_order),y=minor_p)) + 
+  geom_boxplot() +
+  geom_label_repel(data = pdata %>% filter(minor_p>0.05),aes(x=reorder(pop,pop_order),y=minor_p,label=pop)) 
+```
+
 
 ## Filtering for HWE
 
@@ -431,6 +493,7 @@ sea_dist <- read_csv("IBD_ak.gen.csv") %>%
 There is no sense looking at distances between adjacent and maggie since these will be driven by ancient divergence and therefore not indicative of isolation-by-distance.  The plots below are therefore focussed on within adjacent and within maggie comparisons.  For adjacent reefs there is very clearly no relationship despite quite large distances in some cases.  In contrast, at maggie there does seem to be a weak positive trend of higher Fst with greater distances and this is driven largely by comparisons between Northern and Southern bays. 
 
 ```{r}
+write_rds(sea_dist,"cache/sea_dist.rds")
 sea_dist %>% 
   filter(comp_type!="between") %>% 
   ggplot(aes(x=Dist,y=Fst)) + 
@@ -438,7 +501,14 @@ sea_dist %>%
   geom_smooth(method="lm") +
   geom_label_repel(aes(label = pair_label),size=1) +
   facet_wrap(~fst_type, scales="free_x") + 
+  theme(legend.position = "bottom") + 
+  theme_bw() +
+  labs(
+    color="Contrast Type:",
+    x = "Sea Distance / km",
+    y = expression("F"["st"])) +
   theme(legend.position = "bottom")
+ggsave("figures/figure_s4.svg",width = 10,height = 5)
 ```
 ## Mantel Tests
 
@@ -548,7 +618,9 @@ ggplot(deltak_data %>% na.omit(),aes(x=k,y=deltaK)) +
   geom_line() + 
   facet_wrap(~subset) +
   xlab("Number of clusters, K") + 
-  ylab(expression(paste(Delta,"K")))
+  ylab(expression(paste(Delta,"K"))) +
+  theme_bw() 
+ggsave("figures/figure_s1B.svg",width = 10, height = 5)
 ```
 
 #### Fine structure within adjacent
@@ -580,7 +652,14 @@ pcoa_ak_filtered_nr_meta_adj %>%
   ggplot(aes(x=PC1,y=PC2)) + 
   geom_point(aes(color=pop)) + 
   xlab(paste("PC1 (",round(pcoa_var_adj[1]*100,1)," %)",sep="")) +
-  ylab(paste("PC2 (",round(pcoa_var_adj[2]*100,1)," %)",sep=""))
+  ylab(paste("PC2 (",round(pcoa_var_adj[2]*100,1)," %)",sep="")) + 
+  labs(color=NULL) +
+  theme_bw()
+```
+
+
+```{r}
+ggsave("figures/figure_s2A.svg",width = 6, height = 5)
 ```
 
 These individuals might represent members of a third major population cluster for this species. Our adjacent cluster is likely to correspond to `Cluster 1a` identified by [@Matias2022-uz] based on its location.  These outlying individuals might be from a another genetic cluster (eg `Cluster 1b`) or potentially close relatives that escaped our filters for this.
@@ -611,9 +690,12 @@ run10 %>%
   ggplot(aes(x = ID, y = p)) +
   geom_col(aes(fill=cluster),position="stack", stat = "identity",width = 1,linewidth=0) +
   facet_grid(cols=vars(reorder(pop,pop_order)),scales = "free", space = "free") +
+  theme_bw() +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + 
   theme(strip.text = element_text(size=6)) +
-  xlab("Sample ID") + ylab("Admixture Proportion")
+  xlab("Sample") + ylab("Admixture Proportion") +
+  labs(fill="Cluster")
+ggsave("figures/figure_s3A.svg",width = 12, height = 5)
 ```
 
 ```{r}
@@ -662,8 +744,14 @@ pcoa_ak_filtered_nr_meta_mag %>%
   ggplot(aes(x=PC1,y=PC2)) + 
   geom_point(aes(color=cluster)) + 
   xlab(paste("PC1 (",round(pcoa_var_mag[1]*100,1)," %)",sep="")) +
-  ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep=""))
+  ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep="")) +
+  theme_bw()
 ```
+
+```{r}
+ggsave("figures/figure_s3B.svg",width = 6, height = 5)
+```
+
 
 Now plotting by location we can see that the largest cluster (C1) is comprised of samples from all bays, however, the two smaller clusters (C3, and C2) are primarily made up of individuals from southern bays, Picnic Bay and Geoffrey Bay with a small number of individuals from Middle Reef. Nevertheless, neither C2 or C3 clusters is specifically associated with a particular bay (both clusters are found in PB and GB).
 
@@ -672,7 +760,10 @@ pcoa_ak_filtered_nr_meta_mag %>%
   mutate(pop_order = location_order[pop]) %>% 
   ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color=reorder(pop,pop_order))) + 
   xlab(paste("PC1 (",round(pcoa_var_mag[1]*100,1)," %)",sep="")) +
-  ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep=""))
+  ylab(paste("PC2 (",round(pcoa_var_mag[2]*100,1)," %)",sep="")) + 
+  theme_bw() + 
+  labs(color=NULL)
+ggsave("figures/figure_s2B.svg",width = 6, height = 5)
 ```
 
 If we color the plot by Island side (North = HFB, WB, MB, HB; South = GB, PB, MR) we can more clearly see that clusters C2 and C3 are dominated by Southern bays. Noting that the percentages of variation explained by this PCA are fairly low (5.6% in total) it is possible that subtle population structure in southern bays could be due to a factors such as highly variable reproductive success between colonies or between years, or simply due to inbreeding itself. 

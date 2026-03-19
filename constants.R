@@ -1,3 +1,4 @@
+library(colorspace)
 
 # Named list to convert abbreviated names to long names
 
@@ -9,9 +10,16 @@ names(location_names) <- location_codes
 location_order <- 1:15
 names(location_order) <- c("BRR","EP","WP","LPB","SO","JB","KR","HaR","HFB","WB","MB","HB","GB","PB","MR")
 
+adj_cols <- sequential_hcl(palette = "Blues",n=10)[2:9]
+mag_cols <- sequential_hcl(palette = "Oranges",n=8)[1:7]
+#swatchplot(c(adj_cols,rev(mag_cols)))
+
+location_colors <- c(adj_cols,rev(mag_cols))
+names(location_colors) <- names(location_order)
+
 # Assign a certain colour to the clusters, so that cluster1 is consistently blue and cluster2 orange
-cluster_colors <- c("C1"="blue","C2"="orange")
-cluster_names <- c("C1"="Adjacent Reefs","C2"="Magnetic Island")
+cluster_colors <- c("C2"="blue","C1"="orange")
+cluster_names <- c("C2"="Adjacent Reefs","C1"="Magnetic Island")
 
 maggie_sites <- c("HFB","WB","MB","HB","GB","PB","MR")
 maggie_no_sites <- c("HFB","WB","MB","HB")
@@ -21,7 +29,6 @@ maggie_so_sites <- c("GB","PB","MR")
 
 #Assign colours based on these site locations: Magnetic Island vs. Palm Island vs. Mid-shelf
 
-library(colorspace)
 
 gr_or <- diverge_hcl(palette = "Green-Orange",n=8)
 

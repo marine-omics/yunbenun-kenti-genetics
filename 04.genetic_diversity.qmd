@@ -291,8 +291,9 @@ p_values <- map(c("Hs","Ho","Fis"),test_basic_stat_noso) %>%
   bind_rows() %>% 
   pivot_wider(names_from = stat,values_from = p)
 knitr::kable(p_values)
-```
 
+allhet.stats_noso %>% knitr::kable()
+```
 
 
 ## Fixed allelic differences/Private alleles
@@ -309,3 +310,5 @@ When running this on amalgamated populations we now see no fixed differences bet
 pa_ak.gen.mi <- gl.report.pa(ak.gen.mi.adj)
 pa_ak.gen.no.so <- gl.report.pa(ak.gen.no.so)
 ```
+
+# 

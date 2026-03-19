@@ -12,4 +12,12 @@ Analysis is divided into the following steps
 - [Long Runs of Homozygosity](06.LROH)
 
 
+## Running the code
 
+Rendered versions of all quarto files for this repository are available at the links above.  If you would like to render these yourself and potentially edit/run the code you will need additional data.  Download data and code as follows
+
+```bash
+git clone git@github.com:SandraErdmann/Chapter1_Script.git
+wget http://data.qld.edu.au/public/Q5999/SandraErdmann/Chapter1_Script/data.tgz
+tar -zxvf data.tgz
+```

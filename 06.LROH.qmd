@@ -14,8 +14,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FAL
 ```
 
 ```{r}
-library(tidyverse)
 library(ggrepel)
+library(tidyverse)
 library(dartR.base)
 library(mHG)
 source("constants.R")
@@ -29,7 +29,7 @@ First setup data we need
 load(file = "cache/ak.gen.mi.adj.rdata")
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Write a table of samples mapped to pops for bcftools to use
 data.frame(id=ak.gen.mi.adj$ind.names,pop=ak.gen.mi.adj$pop) %>% 
   write.table(file = "lroh/id2pops.txt",row.names = FALSE, quote = FALSE)
@@ -106,19 +106,26 @@ roh_filtered %>%
     geom_boxplot(aes(fill = mi_no_adj),outliers = FALSE) + 
     geom_jitter(width=0.2) +
   scale_fill_manual(values = pop_colors,labels = pop_names) +
-  geom_label_repel(data=outlier_data,aes(label = id)) +
-  theme_minimal() + 
+  geom_label_repel(data=outlier_data,aes(label = pop)) +
+  theme_bw() + 
   labs(
     x="",
     y="Total LROH/Mb"
   ) + 
-  theme(legend.position = "top", legend.title = element_blank())
+  theme(legend.position = "bottom", legend.title = element_blank())
+ggsave("figures/figure_s5A.svg",width = 6,height = 5)
 ```
 
 ```{r}
 model <- lm(tot_len ~ mi_no_adj,roh_filtered)
 anova(model)
 ```
+
+```{r}
+model <- lm(tot_len ~ mi_adj,roh_filtered)
+anova(model)
+```
+
 
 It is difficult to know what threshold to filter these ROH. Our power to detect ROH is quite low due to the sparsity of markers. If we filter to only the most significant ROH these are found in just two individuals in South Magnetic Island. One way to work around this is to test whether a list of ROH is enriched in entries from Magnetic Island. For this we use the mHG package following the method of Eden 2007 Eden, E. (2007). Discovering Motifs in Ranked Lists of DNA Sequences. Haifa. Retrieved from http://bioinfo.cs.technion.ac.il/people/zohar/thesis/eran.pdf (pages 10-12, 18-20). Since there are potentially multiple ROH per individual we choose only the mighest PHRED scoring ROH per individual for this test.
 
@@ -139,8 +146,17 @@ roh_best <- roh %>%
 roh_best %>% 
   filter(phred>20) %>% 
   ggplot(aes(x=reorder(id,phred))) +
-  geom_col(aes(y=phred,fill=mi_no_adj))
-#  geom_density(aes(fill=mi_adj),alpha=0.5)
+  geom_col(aes(y=phred,fill=mi_no_adj)) + 
+  scale_fill_manual(values = pop_colors,labels = pop_names) +
+  theme_bw() + 
+  theme(axis.text.x = element_blank()) + 
+  labs(
+    x=NULL,
+    y="Phred Score",
+    fill=NULL
+  ) + 
+  theme(legend.position = "bottom")
+ggsave("figures/figure_s5B.svg",width = 6,height = 5)
 ```
 
 ```{r}
