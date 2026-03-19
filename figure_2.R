@@ -13,13 +13,25 @@ load("cache/metadata.rdata")
 sea_dist <- read_rds("cache/sea_dist.rds")
 
 maggie_kmls <- c("Huntingfield_Bay.kml","Wilson_Bay.kml","Maud_Bay.kml","Horseshoe_Bay.kml","Geoffrey_Bay.kml","Picnic_Bay.kml","Middle_Reef.kml")
+extra_kmls <- c("Arthur_Bay.kml","Bay_Rock.kml","Florence_Bay.kml","Nelly_Bay.kml")
 
 kml_files <- paste("dispersal",maggie_kmls,sep="/")
+extra_kml_files <- paste("dispersal",extra_kmls,sep="/")
 
 disp_data <- map(kml_files,st_read) %>% bind_rows()
 disp_sf_sites <- disp_data %>% 
   mutate(name = str_replace(Name,"_"," ")) %>% 
   left_join(sites_data,by="name")
+
+extra_sites <- readxl::read_excel("dispersal/extra_sites.xlsx") %>% 
+  mutate(pop=NA,n_samples=NA,pop_order=NA,pop_group="None")
+
+
+
+extra_disp_data <- map(extra_kml_files,st_read) %>% bind_rows()
+extra_disp_sf_sites <- extra_disp_data %>% 
+  mutate(name = str_replace(Name,"_"," ")) %>% 
+  left_join(extra_sites, by="name")
 
 gbr_coast <- st_read("maps/GBR_NESP-TWQ-5/BaseLayers/",layer = "GBR_coastlineONLY")
 gbr_features <- st_read("maps/GBR_NESP-TWQ-5/BaseLayers/",layer = "TS_AIMS_NESP_Torres_Strait_Features_V1b_with_GBR_Features")
@@ -40,15 +52,21 @@ projcrs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 sites_sf <- st_as_sf(sites_data %>% filter(pop_group=="MI"),coords = c("lon", "lat"),crs = projcrs) %>% 
   mutate(name_label = paste(name," (",pop,")",sep=""))
 
+extra_sites_sf <- st_as_sf(extra_sites,coords=c("lon","lat"),crs=projcrs) %>% 
+  mutate(name_label = name)
+
 sf_oz <- ozmap("states")
 
 pmap <- ggplot() + 
   geom_sf(data = gbr_ft_cropped %>% filter(LEVEL_1=="Island")) +
   geom_sf(data = gbr_coast_cropped) +
   geom_sf(data = disp_sf_sites,aes(color=pop)) +
+  geom_sf(data = extra_disp_sf_sites,color="grey") +
   geom_sf(data = sites_sf,aes(color=pop),size=3) + 
+  geom_sf(data = extra_sites_sf,color="grey",size=3) +
   scale_color_manual(values = location_colors) +
-  ggrepel::geom_text_repel(data = sites_sf, mapping = aes(label=name_label, geometry=geometry), stat = "sf_coordinates",size=3) + 
+  ggrepel::geom_text_repel(data = rbind(extra_sites_sf,sites_sf), mapping = aes(label=name_label, geometry=geometry), stat = "sf_coordinates",size=3) + 
+#  ggrepel::geom_text_repel(data = extra_sites_sf, mapping = aes(label=name_label, geometry=geometry), stat = "sf_coordinates",size=3) +   
   theme_bw() +
   theme(legend.position="none") +
   xlab("") + ylab("") 

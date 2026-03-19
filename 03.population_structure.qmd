@@ -29,6 +29,7 @@ For population structure we begin by loading the filtered data with redundant in
 
 ```{r, echo=TRUE}
 load("cache/ak.filtered.nr.rdata")
+write_tsv(data.frame(id=ak.filtered.nr$ind.names),file = "nodups_ids.txt")
 ```
 
 # Analysis of broadscale structure using the full dataset
