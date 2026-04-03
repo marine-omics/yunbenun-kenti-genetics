@@ -405,21 +405,21 @@ The dart2vcf script is then run against the Acropora kenti genome, aligning dart
 
 ``` bash
 cd dart2vcf
-./dart2vcf.py -g aten_final_0.11.fasta ../raw_data/Report_DAc23-8597_5_moreOrders_SNP_2.csv > 8597.vcf 2>8597.err
+./dart2vcf.py -g AteV2.2Ref_genome.fa ../raw_data/Report_DAc23-8597_5_moreOrders_SNP_2.csv > 8597_chr.vcf 2>8597_chr.err
 ```
 
-This process results in a loss of around 10% of loci (50323 of 55247), mostly because they cannot be mapped to the genome. Thus the vcf file will have slighly fewer loci than the genlight object used by dartR.
+This process results in a loss of around 10% of loci (49989 of 55247), mostly because they cannot be mapped to the genome. Thus the vcf file will have slighly fewer loci than the genlight object used by dartR.
 
 After performing the conversion we extract a subset corresponding to the same SNPs and individuals as `ak.filtered`
 
 ``` bash
 # Sanitize loci because dartR changes them from the original
 #
-cat ak.filtered.loci| sed 's/-/_/' | sed 's:/:>:' | sed 's/-/:/' | sed 's/_/|F|0--/'  > tmp.loci 
+cat ak.pop.nm.loci | sed 's/-/_/' | sed 's:/:>:' | sed 's/-/:/' | sed 's/_/|F|0--/'  > tmp2.loci 
 
-# Retains 4919 of the original 5276 loci
-bcftools filter -i "ID=@tmp.loci" 8597.vcf.gz -Oz > 8597.1.vcf.gz
+bcftools filter -i "ID=@tmp2.loci" 8597_chr.vcf.gz -Oz > 8597_chr.1.vcf.gz
 
-# Retains all 465 samples
-bcftools view -S ak.filtered.ind 8597.1.vcf.gz -Oz > ak.filtered.vcf.gz
+# Retains 3801 of 4107 of the original loci. Some would not have mapped or passed conversion to vcf
+
+bcftools view -S ak.pop.nm.ind 8597_chr.1.vcf.gz -Oz > ak.pop.nm.ind.vcf.gz
 ```
