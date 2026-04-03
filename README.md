@@ -21,3 +21,12 @@ git clone git@github.com:marine-omics/yunbenun-kenti-genetics.git
 wget http://data.qld.edu.au/public/Q5999/marine-omics/yunbenun-kenti-genetics/data.tgz
 tar -zxvf data.tgz
 ```
+
+# Raw Data
+
+Unfiltered genotype calls from DaRT sequencing are available in DaRT 2-row format
+
+```bash
+wget http://data.qld.edu.au/public/Q5999/marine-omics/yunbenun-kenti-genetics/raw_data/Report_DAc23-8597_5_moreOrders_SNP_2.csv
+```
+
