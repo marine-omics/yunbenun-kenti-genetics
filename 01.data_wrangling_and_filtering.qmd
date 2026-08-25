@@ -142,25 +142,6 @@ Inspect the individual call rates and remove duplicates with the lower call rate
 dartR.base::gl.report.callrate(ak, method = "ind", ind.to.list = 528)
 ```
 
-# Remove duplicates
-
-Remove the following duplicates: At_162_J20.1', 'At_163_J20.1', 'B1', 'A2', 'A3', 'A7', 'B8', 'A9', 'A10', 'B11', 'A15', 'B17', 'B18', 'A19', 'A21', 'WB_03/04/2022_36'
-
-```{r}
-
-if (file.exists("cache/ak1.rdata")){
-  load("cache/ak1.rdata")
-} else {
-  # Drop duplicates from current dataset
-  ak1 <- gl.drop.ind(ak, ind.list=c('At_162_J20.1', 'At_163_J20.1', 'B1', 'A2', 'A3', 'A7', 'B8', 'A9', 'A10', 'B11', 'A15', 'B17', 'B18', 'A19', 'A21', 'WB_03/04/2022_36'))
-  # Filter for monomorphs after removing duplicates}
-  ak1 <- gl.filter.monomorphs(ak1)
-  # Recalculate locus metrics
-  ak1 <- gl.recalc.metrics(ak1)
-  save(ak1,file = "cache/ak1.rdata")
-}
-```
-
 # Filtering
 
 Filter dataset for
@@ -178,6 +159,11 @@ Filter dataset for
 nInd(ak1)
 nLoc(ak1)
 ```
+
+```{r}
+table(pop(ak1))
+```
+
 
 ### Reproducibility 0.99
 
