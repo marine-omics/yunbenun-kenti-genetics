@@ -287,14 +287,16 @@ test_basic_stat_noso <- function(stat){
   
   data.frame(stat,contrast = c("adj_no","adj_so","no_so"), "p"=c(pval_adj_no,pval_adj_so,pval_no_so))
 }
+```
 
+
+```{r}
 p_values <- map(c("Hs","Ho","Fis"),test_basic_stat_noso) %>% 
   bind_rows() %>% 
   pivot_wider(names_from = stat,values_from = p)
 knitr::kable(p_values)
-
-allhet.stats_noso %>% knitr::kable()
 ```
+
 
 
 ## Fixed allelic differences/Private alleles

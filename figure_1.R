@@ -84,7 +84,7 @@ library(cowplot)
 plot_grid(
   pmap + theme(legend.position="none"),
   g,
-  rel_widths = c(3, 0.5))
+  rel_widths = c(3, 0.7))
 
 ggsave(filename = "figures/Figure1.png",width = 174,height = 110, units = "mm")
 ggsave(filename = "figures/Figure1.svg",width = 174,height = 110,units = "mm")
