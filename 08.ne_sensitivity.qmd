@@ -1,0 +1,520 @@
+---
+title: "8 Sensitivity Analysis for Ne"
+author: "Ira Cooke"
+format: gfm
+editor: source
+editor_options: 
+  chunk_output_type: inline
+execute:
+  freeze: auto
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+```{r}
+library(ggrepel)
+library(tidyverse)
+library(dartR.base)
+source("constants.R")
+source("functions.R")
+```
+
+```{r}
+load("cache/sites_data.rdata")
+
+sites_data_pools <- sites_data |> 
+  mutate(ne_pool = case_when(
+    pop %in% maggie_no_sites ~ "NO",
+    pop %in% maggie_so_sites ~ "SO",
+    !(pop %in% maggie_sites) ~ "ADJ"
+  ))
+```
+
+```{r, results='hide'}
+ak.chr <- dartR::gl.read.vcf("dart2vcf/ak.pop.nm.ind.vcf.gz", ind.metafile = "ind_metrics_SNP2_namefix.csv")
+```
+
+## Downsampling
+
+Our estimates are based on three population groupings which we justified based on population structure analysis showing that adjacent was largely panmictic whereas Magnetic Island had some North/South structure.
+
+Sample sizes are as follows;
+
+```{r}
+ak.chr.mi.adj <- read_rds("ne/ak.chr.mi.adj.rds")
+table(pop(ak.chr.mi.adj))
+```
+
+The sample size for the adjacent population is far larger. To assess whether this imbalance affects our Ne estimates we downsample all three groupings to a little less than the size of the smallest (SO, n = 58, downsampled to 50), giving a balanced dataset of 150 individuals. Individuals are drawn at random without replacement within each grouping. We retain the full locus set (`mono.rm = FALSE`) so that any change in Ne is attributable to sample size rather than to a different set of loci.
+
+```{r}
+if ( file.exists("ne/ak.chr.mi.adj.ds.rds")){
+  ak.chr.mi.adj.ds <- read_rds("ne/ak.chr.mi.adj.ds.rds")
+} else {
+  downsample_pops <- function(gl, n = min(table(pop(gl))), seed = NULL) {
+    if (!is.null(seed)) set.seed(seed)
+
+    keep <- tibble(ID = indNames(gl), pop = as.character(pop(gl))) |>
+      group_by(pop) |>
+      slice_sample(n = n) |>
+      pull(ID)
+
+    gl.keep.ind(gl, ind.list = keep, mono.rm = FALSE, recalc = TRUE, verbose = 0)
+  }
+
+  ak.chr.mi.adj.ds <- downsample_pops(ak.chr.mi.adj, n = 50, seed = 6432)
+
+  # This provides parameters for each job when running the jackknife
+  data.frame(id=ak.chr.mi.adj.ds$ind.names,pop=ak.chr.mi.adj.ds$pop) %>% 
+    mutate(iteration = row_number()) %>% 
+    write_tsv(file = "ne/grid_jk_ds.tsv",col_names = FALSE)
+  
+  write_rds(ak.chr.mi.adj.ds,file = "ne/ak.chr.mi.adj.ds.rds")
+}
+
+table(pop(ak.chr.mi.adj.ds))
+```
+
+Note that reducing the sample size inevitably renders some loci monomorphic (266 of 3411 here). These are uninformative for LD-based Ne and are ignored by NeEstimator, so the balanced analysis is based on slightly fewer polymorphic loci than the full analysis.
+
+
+For this balanced analysis we performed the manual Jackknife procedure just as we did for the results presented in the paper (including all individuals), leaving out one individual at a time across all 150 jobs of the balanced grid (`ne/03.jackknife_ds.sh`).
+
+```{r}
+ne_grid_jk_ds <- list.files("ne/jackknife_ds",pattern = "[0-9].rds",full.names = TRUE) %>% 
+  set_names(function(p) tools::file_path_sans_ext(basename(p))) %>% 
+  map(read_rds) %>% 
+  map(extract_ne_data) |> 
+  bind_rows(.id = "input") %>% 
+  separate(input,into = c("pop","rep"),sep="_")
+
+ne_jk_ds_summary <- ne_grid_jk_ds %>% 
+  filter(is.finite(ne)) |> 
+  filter(allele_freq=="0.050") |> 
+  mutate(lgne = log10(ne)) %>% # We log transform before applying the Jackknife because this produces better variance estimates
+  group_by(pop) %>% 
+  summarise(
+    jkmean = mean(lgne),
+    jkvar = (n()-1)*var(lgne),
+    jk_se=sqrt(jkvar),
+    jk_low=jkmean-1.96*jk_se,
+    jk_high = jkmean+1.96*jk_se
+    ) |> 
+  add_column(dataset="downsampled")
+```
+
+With balanced sample sizes the point estimates stay within the same broad ranges, but the jackknife intervals widen substantially for the two larger groupings. 
+
+
+```{r}
+
+# We want to compare with main results from our paper
+ne_jk_summary <- read_rds("cache/ne_jk_summary.rds") |> 
+    add_column(dataset="full")
+
+ne_jk_both <- rbind(ne_jk_ds_summary,ne_jk_summary)
+
+ne_jk_both |> 
+  ggplot(aes(x=pop,y=10^jkmean,ymin=10^jk_low,ymax=10^jk_high)) + 
+    # position_dodge is what separates the two datasets; fill/colour only
+    # change appearance. width must be < the dodge width to leave a gap.
+    geom_crossbar(aes(color = dataset), linewidth = 1,
+                  width = 0.6, position = position_dodge(width = 0.7)) + 
+    # pop_names is keyed on uppercase codes, but pop is lowercase here
+    scale_x_discrete(labels = function(x) pop_names[toupper(x)]) +
+    scale_y_log10()  +
+  theme_bw() + 
+  labs(
+    x="",
+    y="Effective Population Size",
+    color=""
+  )
+  
+ggsave("figures/figure_s11.png",width = 10,height = 6)
+```
+
+
+## Different allele-frequency thresholds 
+
+When calculating Ne using the LD method it is common practice to remove rare alleles because these can inflate estimates of r2 which in turn leads to depressed estimates of Ne. We used a threshold of 5%, removing any alleles below this frequency.  Here we test the impact of a range of thresholds including this value and spanning from no filter ("0+") to an extremely aggressive filter (>0.2).
+
+Results show that for the Yunbenun populations there is very little impact of allele-frequency thresholds.  In the adjacent population we see lower Ne estimates both for the 0+ filter and for very aggressive filters but this all falls within the margin of error and does not change the overall conclusions. 
+
+```{r}
+allele_freq_order <- set_names(seq(1:7),c("0+","No S*","0.010","0.020","0.050","0.100","0.200"))
+
+ne_grid_jk_ra <- list.files("ne/jackknife_rare_allele/",pattern = "[0-9].rds",full.names = TRUE) %>% 
+  set_names(function(p) tools::file_path_sans_ext(basename(p))) %>% 
+  map(read_rds) %>% 
+  map(extract_ne_data) |> 
+  bind_rows(.id = "input") %>% 
+  separate(input,into = c("pop","rep"),sep="_")
+
+ne_jk_ra_summary <- ne_grid_jk_ra %>% 
+  mutate(lgne = log10(ne)) %>% # We log transform before applying the Jackknife because this produces better variance estimates
+  group_by(pop,allele_freq) %>% 
+  summarise(
+    jkmean = mean(lgne),
+    jkvar = (n()-1)*var(lgne),
+    jk_se=sqrt(jkvar),
+    jk_low=jkmean-1.96*jk_se,
+    jk_high = jkmean+1.96*jk_se
+    ) 
+
+ne_jk_ra_summary |>
+  mutate(allele_freq_order = allele_freq_order[allele_freq]) |> 
+  ggplot(aes(x=pop,y=10^jkmean,ymin=10^jk_low,ymax=10^jk_high)) + 
+    geom_crossbar(aes(color = reorder(allele_freq,allele_freq_order)), linewidth = 1,
+                  width = 0.6, position = position_dodge(width = 0.7)) + 
+  scale_x_discrete(labels = function(x) pop_names[toupper(x)]) +
+      scale_y_log10()  +
+  theme_bw() + 
+  labs(
+    x="",
+    y="Effective Population Size",
+    color=""
+  )
+
+```
+
+
+## Alternative pooling schemes
+
+To demonstrate that our overall results regarding Ne at Adjacent, North Yunbenun and South Yunbenun are robust to pooling strategy we provide results here for unpooled samples.  Each sampling site (reef) is treated separately.  
+
+All sites separated (no pooling) which results in the following sample sizes per site. 
+
+```{r}
+table(pop(ak.chr))
+```
+
+We exported all data for manual Jackknife sampling to make it comparable with results in our paper. Estimation failed to give a finite value for sites with very low sample sizes (<15) but for those sites that succeeded we can see that the individual site values are comparable to those for pooled groups, Adjacent, North Yunbenun and South Yunbenun.
+
+```{r, eval=FALSE}
+write_rds(ak.chr,file = "ne/ak.chr.rds")
+
+data.frame(id=ak.chr$ind.names,pop=ak.chr$pop) %>% 
+  mutate(iteration = row_number()) %>% 
+  write_tsv(file = "ne/grid_jk_sep.tsv",col_names = FALSE)
+```
+
+
+```{r}
+ne_grid_jk_sep <- list.files("ne/jackknife_sep",pattern = "[0-9].rds",full.names = TRUE) |>
+  # Keep the filenames, which are the only record of pop and replicate
+  set_names(function(p) tools::file_path_sans_ext(basename(p))) %>% 
+  map(read_rds) %>% 
+  map(extract_ne_data) |> 
+  bind_rows(.id = "input") %>% 
+  separate(input,into = c("pop","rep"),sep="_")
+
+
+
+ne_grid_jk_sep %>% 
+  mutate(allele_freq_order = allele_freq_order[allele_freq]) |> 
+  filter(allele_freq %in% c("0.050")) |> 
+  left_join(sites_data_pools,by="pop") |> 
+  ggplot(aes(x=reorder(pop,pop_order),y=as.numeric(ne))) + 
+  geom_boxplot(aes(fill=ne_pool)) +
+  scale_y_log10() + 
+  theme_bw() + 
+  labs(
+    y = "Effective Population Size Ne",
+    x = "",
+    fill="") + 
+  theme(axis.text.x = element_text(angle=90)) 
+
+ggsave("figures/figure_s12.png",width = 10,height = 6)
+```
+
+
+```{r}
+ne_jk_sep_summary <- ne_grid_jk_sep %>% 
+  filter(is.finite(ne)) |> 
+  mutate(lgne = log10(ne)) %>% # We log transform before applying the Jackknife because this produces better variance estimates
+  group_by(allele_freq,pop) |> 
+  summarise(
+    jkmean = mean(lgne),
+    jkvar = (n()-1)*var(lgne),
+    jk_se=sqrt(jkvar),
+    jk_low=jkmean-1.96*jk_se,
+    jk_high = jkmean+1.96*jk_se
+    ) 
+
+
+ne_jk_sep_summary |> 
+  mutate(allele_freq_order = allele_freq_order[allele_freq]) |> 
+  left_join(sites_data_pools,by="pop") |> 
+  filter(allele_freq %in% c("0.050")) |> 
+  ggplot(aes(x=reorder(pop,pop_order),y=10^jkmean,ymin=10^jk_low,ymax=10^jk_high)) + 
+    # position_dodge is what separates the two datasets; fill/colour only
+    # change appearance. width must be < the dodge width to leave a gap.
+    geom_crossbar(aes(color = ne_pool), linewidth = 1,
+                  width = 0.6, position = position_dodge(width = 0.7)) +
+  geom_hline(data = data.frame(ne = c(27491,1379,94),pool = c("ADJ","NO","SO")),aes(yintercept = ne,color=pool)) +
+  scale_y_log10(limits = c(10,1e6)) 
+```
+
+
+## Sensitivity to close relative inclusion
+
+Previously we identified 8 individuals involved in 13 close relative pairs ((1/(2^(9/2))) > relatedness < 0.35) that could be excluded to remove all such close relative relationships.  These were retained in the main analysis.  Here we exclude them to see if this has any impact on Ne estimates.
+
+This has basically no impact on results for the adjacent and north yunbenun locations but it leads to a substantial increase for the south yunbenun individuals from a mean of 94 to 168.  This is not surprising since 7 of the eight close relatives are from Geoffrey Bay and Picnic Bay (south Yunbenun).  These close relatives most likely contribute substantial LD signal in south yunbenun lowering the Ne estimate.  
+
+```{r, echo=TRUE}
+if ( file.exists("ne/ak.chr.mi.adj.kin.rds")){
+  ak.chr.mi.adj.kin <- read_rds("ne/ak.chr.mi.adj.kin.rds")
+} else {
+
+  # The file lists one row per member of each related pair, so the same
+  # individual can appear more than once
+  excluded_kin <- read_tsv("relatedness/excluded_kin.tsv", col_names = TRUE) |>
+    pull(excluded_kin) |>
+    unique()
+
+  # mono.rm = FALSE keeps the locus set identical to the main analysis so that
+  # any change in Ne is attributable to the dropped individuals
+  ak.chr.mi.adj.kin <- gl.drop.ind(
+    ak.chr.mi.adj,
+    ind.list = excluded_kin,
+    mono.rm = FALSE,
+    recalc = TRUE,
+    verbose = 0
+  )
+
+  # This provides parameters for each job when running the jackknife
+  data.frame(id=ak.chr.mi.adj.kin$ind.names,pop=ak.chr.mi.adj.kin$pop) %>% 
+    mutate(iteration = row_number()) %>% 
+    write_tsv(file = "ne/grid_jk_kin.tsv",col_names = FALSE)
+  
+  write_rds(ak.chr.mi.adj.kin,file = "ne/ak.chr.mi.adj.kin.rds")
+}
+
+table(pop(ak.chr.mi.adj.kin))
+```
+
+```{r}
+ne_grid_jk_kin <- list.files("ne/jackknife_kin",pattern = "[0-9].rds",full.names = TRUE) %>% 
+  set_names(function(p) tools::file_path_sans_ext(basename(p))) %>% 
+  map(read_rds) %>% 
+  map(extract_ne_data) |> 
+  bind_rows(.id = "input") %>% 
+  separate(input,into = c("pop","rep"),sep="_")
+
+ne_jk_kin_summary <- ne_grid_jk_kin %>% 
+  filter(is.finite(ne)) |> 
+  filter(allele_freq=="0.050") |> 
+  mutate(lgne = log10(ne)) %>% # We log transform before applying the Jackknife because this produces better variance estimates
+  group_by(pop) %>% 
+  summarise(
+    jkmean = mean(lgne),
+    jkvar = (n()-1)*var(lgne),
+    jk_se=sqrt(jkvar),
+    jk_low=jkmean-1.96*jk_se,
+    jk_high = jkmean+1.96*jk_se
+    ) |> 
+  add_column(dataset="kin_removed")
+```
+
+```{r}
+
+# We want to compare with main results from our paper
+ne_jk_summary <- read_rds("cache/ne_jk_summary.rds") |> 
+    add_column(dataset="full")
+
+ne_jk_kin_nokin <- rbind(ne_jk_summary,ne_jk_kin_summary)
+
+ne_jk_kin_nokin |> 
+  ggplot(aes(x=pop,y=10^jkmean,ymin=10^jk_low,ymax=10^jk_high)) + 
+    # position_dodge is what separates the two datasets; fill/colour only
+    # change appearance. width must be < the dodge width to leave a gap.
+    geom_crossbar(aes(color = dataset), linewidth = 1,
+                  width = 0.6, position = position_dodge(width = 0.7)) + 
+    # pop_names is keyed on uppercase codes, but pop is lowercase here
+    scale_x_discrete(labels = function(x) pop_names[toupper(x)]) +
+    scale_y_log10()  +
+  theme_bw() + 
+  labs(
+    x="",
+    y="Effective Population Size",
+    color=""
+  )
+```
+
+
+## Sensitivity to low-level admixture
+
+Admixture between two differentiated gene pools generates linkage disequilibrium between loci that differ in allele frequency between those pools, even for unlinked loci. Because the LD method attributes all such disequilibrium to drift, admixed individuals can depress Ne estimates. Our main analysis already removes migrants and highly admixed individuals (>5% minor ancestry fraction, see [03.population_structure](03.population_structure.md)), but individuals carrying a trace of the opposing cluster were retained. Here we apply a far stricter threshold and drop every remaining individual whose minor admixture fraction exceeds 1%.
+
+The minor admixture fraction is taken from the K = 2 admixture run, as the smaller of an individual's two cluster proportions. Only 16 individuals exceed the 1% threshold (8 adjacent, 4 north Yunbenun, 4 south Yunbenun) and the largest minor fraction anywhere in this dataset is 0.036, so all of these are mild cases. As for the other sensitivity analyses we keep the locus set fixed (`mono.rm = FALSE`) so that any change in Ne is attributable to the dropped individuals rather than to a different set of loci.
+
+```{r, echo=TRUE}
+if ( file.exists("ne/ak.chr.mi.adj.admix.rds")){
+  ak.chr.mi.adj.admix <- read_rds("ne/ak.chr.mi.adj.admix.rds")
+} else {
+
+  # Minor admixture fraction: the smaller of the two K=2 cluster proportions
+  mildly_admixed <- read_rds("cache/run12_meta.rds") |>
+    group_by(ID) |>
+    summarise(minor_p = min(p), .groups = "drop") |>
+    filter(minor_p > 0.01) |>
+    pull(ID)
+
+  ak.chr.mi.adj.admix <- gl.drop.ind(
+    ak.chr.mi.adj,
+    ind.list = intersect(mildly_admixed, ak.chr.mi.adj$ind.names),
+    mono.rm = FALSE,
+    recalc = TRUE,
+    verbose = 0
+  )
+
+  # This provides parameters for each job when running the jackknife
+  data.frame(id=ak.chr.mi.adj.admix$ind.names,pop=ak.chr.mi.adj.admix$pop) %>% 
+    mutate(iteration = row_number()) %>% 
+    write_tsv(file = "ne/grid_jk_admix.tsv",col_names = FALSE)
+
+  write_rds(ak.chr.mi.adj.admix,file = "ne/ak.chr.mi.adj.admix.rds")
+}
+
+table(pop(ak.chr.mi.adj.admix))
+```
+
+The manual Jackknife was then run on this reduced dataset exactly as for the main analysis, leaving out one individual at a time (`ne/06.jackknife_admix.sh` and `ne/run_ne_jk_admix.R`).
+
+```{r}
+ne_grid_jk_admix <- list.files("ne/jackknife_admix",pattern = "[0-9].rds",full.names = TRUE) %>% 
+  set_names(function(p) tools::file_path_sans_ext(basename(p))) %>% 
+  map(read_rds) %>% 
+  map(extract_ne_data) |> 
+  bind_rows(.id = "input") %>% 
+  separate(input,into = c("pop","rep"),sep="_")
+
+ne_jk_admix_summary <- ne_grid_jk_admix %>% 
+  filter(is.finite(ne)) |> 
+  filter(allele_freq=="0.050") |> 
+  mutate(lgne = log10(ne)) %>% # We log transform before applying the Jackknife because this produces better variance estimates
+  group_by(pop) %>% 
+  summarise(
+    jkmean = mean(lgne),
+    jkvar = (n()-1)*var(lgne),
+    jk_se=sqrt(jkvar),
+    jk_low=jkmean-1.96*jk_se,
+    jk_high = jkmean+1.96*jk_se
+    ) |> 
+  add_column(dataset="admixed_removed")
+```
+
+```{r}
+
+# We want to compare with main results from our paper
+ne_jk_summary <- read_rds("cache/ne_jk_summary.rds") |> 
+    add_column(dataset="full")
+
+rbind(ne_jk_summary,ne_jk_admix_summary) |> 
+  ggplot(aes(x=pop,y=10^jkmean,ymin=10^jk_low,ymax=10^jk_high)) + 
+    geom_crossbar(aes(color = dataset), linewidth = 1,
+                  width = 0.6, position = position_dodge(width = 0.7)) + 
+    # pop_names is keyed on uppercase codes, but pop is lowercase here
+    scale_x_discrete(labels = function(x) pop_names[toupper(x)]) +
+    scale_y_log10()  +
+  theme_bw() + 
+  labs(
+    x="",
+    y="Effective Population Size",
+    color=""
+  )
+```
+
+
+## Combination Plots
+
+Publication versions of the sensitivity analyses, assembled with cowplot.
+
+### Allele frequency thresholds and unpooled sites
+
+Panel A shows Ne for the three groupings across minimum allele frequency thresholds; panel B shows the unpooled per-site estimates at the 5% threshold. Sites at which the jackknife did not return a finite variance (very low sample sizes) are omitted from panel B.
+
+```{r}
+library(cowplot)
+
+# Publication figures use "Yunbenun" rather than "Magnetic Island"
+combo_pop_names <- c(
+  ADJ = "Adjacent Reefs",
+  NO = "North Yunbenun",
+  SO = "South Yunbenun",
+  MI = "Yunbenun"
+)
+
+pA <- ne_jk_ra_summary |>
+  ungroup() |>
+  mutate(allele_freq = reorder(allele_freq, allele_freq_order[allele_freq])) |>
+  ggplot(aes(x = pop, y = 10^jkmean, ymin = 10^jk_low, ymax = 10^jk_high)) +
+  geom_crossbar(aes(color = allele_freq), linewidth = 0.6, width = 0.6,
+                position = position_dodge(width = 0.75)) +
+  scale_x_discrete(labels = function(x) str_wrap(combo_pop_names[toupper(x)], 14)) +
+  scale_y_log10() +
+  scale_color_viridis_d(end = 0.9) +
+  theme_bw() +
+  labs(x = "", y = "Effective Population Size", color = "Minimum\nallele frequency")
+
+pB <- ne_jk_sep_summary |>
+  ungroup() |>
+  # Sites with too few samples give a non-finite jackknife variance
+  filter(allele_freq == "0.050", is.finite(jk_se)) |>
+  left_join(sites_data_pools, by = "pop") |>
+  ggplot(aes(x = reorder(pop, pop_order), y = 10^jkmean, ymin = 10^jk_low, ymax = 10^jk_high)) +
+  geom_crossbar(aes(color = ne_pool), linewidth = 0.6, width = 0.6) +
+  scale_x_discrete(labels = function(x) location_names[x]) +
+  scale_color_manual(values = pop_colors, labels = combo_pop_names) +
+  scale_y_log10() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "", y = "Effective Population Size", color = "")
+
+plot_grid(pA, pB, ncol = 1, labels = c("A", "B"), align = "v", axis = "lr",
+          rel_heights = c(1, 1.25))
+
+ggsave("figures/figure_s13.png", width = 9, height = 9)
+```
+
+### Individual exclusion and resampling schemes
+
+All three schemes are shown together, distinguished by colour. The baseline here is the full-dataset jackknife taken from the allele frequency analysis at the same 5% threshold used by every other series, rather than the estimate cached in `cache/ne_jk_summary.rds`, which came from an earlier run on a slightly different dataset. This keeps every bar in the panel comparable, at the cost of a baseline for the adjacent grouping that is lower than the value reported in the paper. Note that the downsampled adjacent interval is very wide (see above) and dominates the y-axis range of this panel.
+
+```{r}
+ne_sensitivity_levels <- c("All individuals", "Close relatives removed",
+                           "Admixed individuals removed", "Downsampled (n = 50 per group)")
+
+ne_sensitivity_colors <- c(
+  "All individuals" = "grey30",
+  "Close relatives removed" = "#0072B2",
+  "Admixed individuals removed" = "#D55E00",
+  "Downsampled (n = 50 per group)" = "#009E73"
+)
+
+ne_sensitivity <- bind_rows(
+  ne_jk_ra_summary |>
+    ungroup() |>
+    filter(allele_freq == "0.050") |>
+    select(-allele_freq) |>
+    mutate(dataset = "All individuals"),
+  ne_jk_kin_summary |> mutate(dataset = "Close relatives removed"),
+  ne_jk_admix_summary |> mutate(dataset = "Admixed individuals removed"),
+  ne_jk_ds_summary |> mutate(dataset = "Downsampled (n = 50 per group)")
+) |>
+  mutate(dataset = factor(dataset, levels = ne_sensitivity_levels))
+
+ggplot(ne_sensitivity, aes(x = pop, y = 10^jkmean, ymin = 10^jk_low, ymax = 10^jk_high)) +
+  geom_crossbar(aes(color = dataset), linewidth = 0.6, width = 0.6,
+                position = position_dodge(width = 0.75)) +
+  scale_x_discrete(labels = function(x) str_wrap(combo_pop_names[toupper(x)], 14)) +
+  scale_y_log10() +
+  scale_color_manual(values = ne_sensitivity_colors) +
+  theme_bw() +
+  labs(x = "", y = "Effective Population Size", color = "")
+
+ggsave("figures/figure_s14.png", width = 10, height = 5)
+```
