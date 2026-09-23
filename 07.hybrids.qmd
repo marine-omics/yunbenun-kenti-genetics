@@ -1,0 +1,362 @@
+---
+title: "7 Tests of hybridisation"
+author: "Ira Cooke"
+format: gfm
+editor: source
+editor_options: 
+  chunk_output_type: inline
+execute:
+  freeze: auto
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+```{r}
+library(ggrepel)
+library(tidyverse)
+library(dartR.base)
+source("constants.R")
+```
+
+```{r}
+load("cache/ak_r1.filtered.nr.rdata")
+```
+
+
+## Formal classification of hybrids with NewHybrids
+
+Admixture proportions provide an indication that individuals have mixed ancestry, and therefore might be hybrids, however this analysis cannot distinguish different types of hybrids that have the same admixture proportion.  This can be done via an analysis that includes information on heterozygosity. To formally classify these individuals we used NewHybrids (Anderson & Thompson 2002, Genetics 160:1217-1229), which computes the posterior probability that each individual belongs to one of six genealogical classes: pure Magnetic Island, pure adjacent, F1, F2, backcross to Magnetic Island, or backcross to adjacent.
+
+As input we selected the 200 loci with the highest allele frequency differential between the two parental groups (differentials 0.73-1.0). Parental reference groups were defined as individuals sampled at Magnetic Island sites with \>=99% C1 ancestry (n=110) or at adjacent sites with \<=1% C1 ancestry (n=279); these were anchored to their parental class with NewHybrids z flags. The remaining 38 individuals (putative hybrids, migrants, and individuals with low-level admixture) were left unassigned for classification.
+
+```{r}
+run12_meta <- read_rds("cache/run12_meta.rds")
+```
+
+
+```{r, eval=FALSE}
+# Identify which admixture cluster corresponds to Magnetic Island. Cluster
+# labels (C1/C2) can switch arbitrarily between admixture runs, so this must
+# be determined from the data rather than hardcoded.
+mi_cluster <- run12_meta |>
+  filter(pop %in% maggie_sites) |>
+  group_by(cluster) |>
+  summarise(mean_p = mean(p)) |>
+  slice_max(mean_p) |>
+  pull(cluster)
+
+# Assign each individual to a reference group: pure MI (MI site, >=99% MI
+# ancestry), pure adjacent (adjacent site, <=1% MI ancestry), or Unknown
+# (to be classified)
+id_class <- run12_meta |>
+  group_by(ID) |>
+  summarise(mi_p = p[cluster == mi_cluster], pop = first(pop), .groups = "drop") |>
+  mutate(nh_pop = case_when(
+    pop %in% maggie_sites & mi_p >= 0.99 ~ "PureMI",
+    !(pop %in% maggie_sites) & mi_p <= 0.01 ~ "PureADJ",
+    .default = "Unknown"
+  ))
+
+geno <- as.matrix(ak.filtered.nr)
+ref_pop <- id_class$nh_pop[match(indNames(ak.filtered.nr), id_class$ID)]
+
+# Allele frequency differential between the parental groups
+p0f <- colMeans(geno[ref_pop == "PureMI", ], na.rm = TRUE) / 2
+p1f <- colMeans(geno[ref_pop == "PureADJ", ], na.rm = TRUE) / 2
+n0 <- colSums(!is.na(geno[ref_pop == "PureMI", ]))
+n1 <- colSums(!is.na(geno[ref_pop == "PureADJ", ]))
+absdiff <- abs(p0f - p1f)
+
+# Top 200 most informative loci with adequate call numbers in both groups
+ok <- !is.na(absdiff) & n0 >= 50 & n1 >= 100
+stopifnot(sum(ok) >= 200)
+top_loci <- order(ifelse(ok, absdiff, -Inf), decreasing = TRUE)[1:200]
+
+# NewHybrids "Lumped" genotype coding: 0/1/2 -> 11/12/22, missing -> 0
+gcode <- matrix("0", nrow(geno), 200)
+gcode[geno[, top_loci] == 0] <- "11"
+gcode[geno[, top_loci] == 1] <- "12"
+gcode[geno[, top_loci] == 2] <- "22"
+
+# z flags anchor known-pure individuals to their parental class
+zflag <- case_when(
+  ref_pop == "PureMI" ~ "z0",
+  ref_pop == "PureADJ" ~ "z1",
+  .default = ""
+)
+
+# Genotypes in new hybrids format
+writeLines(c(
+  paste("NumIndivs", nInd(ak.filtered.nr)),
+  "NumLoci 200", "Digits 1", "Format Lumped", "",
+  paste("LocusNames", paste(sprintf("L%03d", 1:200), collapse = " ")),
+  paste(seq_len(nInd(ak.filtered.nr)), zflag, apply(gcode, 1, paste, collapse = " "))
+), "hybrids/nhyb.txt")
+
+# Names and status of individuals
+write_csv(
+  tibble(idx = seq_len(nInd(ak.filtered.nr)), ID = indNames(ak.filtered.nr), nh_pop = ref_pop),
+  "hybrids/nhyb_individuals.csv"
+)
+
+# Locus names and absolute difference in allele frequency
+write_csv(
+  tibble(nh_locus = sprintf("L%03d", 1:200), locus = locNames(ak.filtered.nr)[top_loci],
+         allele_freq_diff = absdiff[top_loci]),
+  "hybrids/nhyb_loci.csv"
+)
+```
+
+NewHybrids was compiled from source (commit `6fc8fd9`) and run with the standard two-generation genotype frequency classes, Jeffreys priors, and a burn-in of 10,000 sweeps followed by 20,000 sweeps of sampling. To check MCMC convergence we ran three independent chains with different random seeds (outputs in `hybrids/`, `hybrids/run2/` and `hybrids/run3/`).
+
+```bash
+
+../newhybrids/newhybsng -d nhyb.txt -c ../newhybrids/TwoGensGtypFreq.txt \
+  -s 5723 8121 --burn-in 10000 --num-sweeps 20000 --no-gui
+
+# Two further chains with different seeds for convergence checking
+(mkdir -p run2; cd run2; ../../newhybrids/newhybsng -d ../nhyb.txt \
+  -c ../../newhybrids/TwoGensGtypFreq.txt -s 3391 7254 \
+  --burn-in 10000 --num-sweeps 20000 --no-gui)
+(mkdir -p run3; cd run3; ../../newhybrids/newhybsng -d ../nhyb.txt \
+  -c ../../newhybrids/TwoGensGtypFreq.txt -s 912 6488 \
+  --burn-in 10000 --num-sweeps 20000 --no-gui)
+```
+
+
+```{r}
+nh_classes <- c("PureMI", "PureADJ", "F1", "F2", "BX_MI", "BX_ADJ")
+
+read_pofz <- function(path) {
+  read_tsv(path, skip = 1, col_names = c("idx", "name", nh_classes),
+           show_col_types = FALSE) |>
+    select(-name)
+}
+
+nh_results <- read_csv("hybrids/nhyb_individuals.csv", show_col_types = FALSE) |>
+  left_join(read_pofz("hybrids/aa-PofZ.txt"), by = "idx") |>
+  left_join(
+    run12_meta |>
+      group_by(ID) |>
+      summarise(minor_p = min(p), pop = first(pop), .groups = "drop"),
+    by = "ID"
+  ) |>
+  rowwise() |>
+  mutate(
+    nh_class = nh_classes[which.max(c_across(all_of(nh_classes)))],
+    nh_maxp = max(c_across(all_of(nh_classes)))
+  ) |>
+  ungroup()
+```
+
+### MCMC convergence
+
+Posterior probabilities agree closely across the three independent chains and no individual changes its modal class, indicating the results are not sensitive to MCMC starting conditions.
+
+```{r}
+m <- list(
+  run1 = as.matrix(read_pofz("hybrids/aa-PofZ.txt")[nh_classes]),
+  run2 = as.matrix(read_pofz("hybrids/run2/aa-PofZ.txt")[nh_classes]),
+  run3 = as.matrix(read_pofz("hybrids/run3/aa-PofZ.txt")[nh_classes])
+)
+
+# Largest posterior difference for any individual/class between any pair of chains
+max(abs(m$run1 - m$run2), abs(m$run1 - m$run3), abs(m$run2 - m$run3))
+
+# All individuals retain the same modal class across chains
+all(max.col(m$run1) == max.col(m$run2)) && all(max.col(m$run1) == max.col(m$run3))
+```
+
+
+The table below shows NewHybrids classifications for the 7 individuals flagged as highly admixed (\>5% minor ancestry) by the crude approach used in [03.population_structure](03.population_structure.md)
+
+```{r}
+nh_results |>
+  filter(minor_p > 0.05) |>
+  select(ID, pop, minor_p, nh_class, nh_maxp, F1, F2, BX_MI, BX_ADJ) |>
+  arrange(desc(minor_p)) |>
+  knitr::kable(digits = 3)
+```
+
+Key findings from this analysis are:
+
+1. No individuals were classified as F1. The two individuals with admixture proportions near 0.5 were classified as F2 with posterior probability 1.0. This implies that first-generation hybrids existed and successfully reproduced. The triangle plot below shows that one of these two is in fact better described as a later-generation hybrid.
+2. Two individuals with intermediate admixture (0.29-0.32) were classified as backcrosses to the adjacent population.
+3. Individuals with minor ancestry fractions between 5% and 16% were classified as pure rather than as recent backcrosses, consistent with this low-level signal reflecting older introgression rather than recent hybridisation. The only ambiguous individual was BRR_41 (posterior 0.89 pure adjacent, 0.11 backcross).
+4. All migrants were classified as pure representatives of their genetic (rather than geographic) population, and all remaining unassigned individuals were classified as pure with posterior probability ~1.
+
+### Triangle plot
+
+As a visual check that does not depend on the NewHybrids model we plotted the hybrid index (the proportion of an individual's alleles that are of Magnetic Island origin) against interclass heterozygosity (the proportion of diagnostic loci at which the individual is heterozygous), using the same 200 loci supplied to NewHybrids. In this space the genealogical classes occupy predictable positions: pure individuals sit in the bottom corners, F1s at the apex (hybrid index 0.5 and maximal heterozygosity, because an F1 receives one gamete from each gene pool), F2s near hybrid index 0.5 but with roughly half the heterozygosity of an F1, and first-generation backcrosses midway along the upper edges.
+
+Because our loci are not perfectly fixed between the parental groups (allele frequency differentials 0.73-1.0) and the parental groups retain within-population variation, observed values are compressed relative to the theoretical triangle. We therefore compute the heterozygosity expected for each genealogical class at these particular loci from the parental allele frequencies, which provides the relevant set of references rather than the idealised values of 1 and 0.5. Note that the F2 and backcross classes have almost identical expected heterozygosity, so within the upper part of the triangle it is the hybrid index rather than heterozygosity that separates them.
+
+```{r}
+# Read back the exact loci and individual ordering supplied to NewHybrids
+nh_loci <- read_csv("hybrids/nhyb_loci.csv", show_col_types = FALSE)
+nh_ind <- read_csv("hybrids/nhyb_individuals.csv", show_col_types = FALSE)
+
+geno_nh <- as.matrix(ak.filtered.nr)[, nh_loci$locus]
+ref_pop <- nh_ind$nh_pop[match(rownames(geno_nh), nh_ind$ID)]
+
+# Polarise each locus so that allele dosage counts Magnetic Island alleles
+dos_nh <- geno_nh
+flip <- colMeans(geno_nh[ref_pop == "PureMI", ], na.rm = TRUE) <
+  colMeans(geno_nh[ref_pop == "PureADJ", ], na.rm = TRUE)
+dos_nh[, flip] <- 2 - dos_nh[, flip]
+
+# Parental allele frequencies on the polarised scale
+pm <- colMeans(dos_nh[ref_pop == "PureMI", ], na.rm = TRUE) / 2
+pa <- colMeans(dos_nh[ref_pop == "PureADJ", ], na.rm = TRUE) / 2
+
+# Frequency of the Magnetic Island allele in a gamete produced by an F1
+q <- (pm + pa) / 2
+
+# Heterozygosity expected for each class given these parental allele frequencies
+exp_het <- c(
+  F1 = mean(pm * (1 - pa) + (1 - pm) * pa),
+  F2 = mean(2 * q * (1 - q)),
+  BX_MI = mean(q * (1 - pm) + (1 - q) * pm),
+  BX_ADJ = mean(q * (1 - pa) + (1 - q) * pa),
+  PureMI = mean(2 * pm * (1 - pm)),
+  PureADJ = mean(2 * pa * (1 - pa))
+)
+round(exp_het, 3)
+
+triangle_df <- tibble(
+  ID = rownames(geno_nh),
+  hybrid_index = rowSums(dos_nh, na.rm = TRUE) / (2 * rowSums(!is.na(dos_nh))),
+  het = rowMeans(geno_nh == 1, na.rm = TRUE)
+) |>
+  left_join(nh_results |> select(ID, nh_class), by = "ID")
+```
+
+```{r}
+highly_admixed_ids <- read_rds("cache/highly_admixed_ids.rds")
+
+ggplot(triangle_df, aes(x = hybrid_index, y = het)) +
+  # Theoretical bounds of the triangle, for orientation only
+  annotate("segment", x = 0, y = 0, xend = 0.5, yend = 1,
+           linetype = "dashed", colour = "grey70") +
+  annotate("segment", x = 0.5, y = 1, xend = 1, yend = 0,
+           linetype = "dashed", colour = "grey70") +
+  geom_hline(yintercept = exp_het[c("F1", "F2")],
+             linetype = "dotted", colour = "grey40") +
+  annotate("text", x = 0.02, y = exp_het[c("F1", "F2")], vjust = -0.6, hjust = 0,
+           size = 2.5, colour = "grey40",
+           label = c("Expected F1 heterozygosity", "Expected F2 heterozygosity")) +
+  geom_point(aes(colour = nh_class), alpha = 0.7) +
+  geom_label_repel(
+    data = triangle_df |>
+      filter(ID %in% highly_admixed_ids),
+#      filter(nh_class %in% c("F1", "F2", "BX_MI", "BX_ADJ") | ID == "BRR_41"),
+    aes(label = ID), size = 2.5, min.segment.length = 0
+  ) +
+  labs(x = "Hybrid index (proportion of Yunbenun alleles)",
+       y = "Interclass heterozygosity", colour = "NewHybrids class") +
+  theme_bw()
+ggsave("figures/figure_s6.svg", width = 7, height = 5)
+ggsave("figures/figure_s6.png", width = 7, height = 5)
+```
+
+The plot corroborates the backcross calls and the pure assignments, but also shows that the two individuals assigned to F2 are very different from one another, a distinction that the six-class NewHybrids model cannot express. Genotype counts at the diagnostic loci (polarised so that `hom_MI` denotes homozygosity for the Magnetic Island allele) make the difference explicit.
+
+```{r}
+dos_nh[c("HB_27/11/21_20", "HaR_06/05/2022_12",
+         "KR_29/03/2022_44", "At_D33_3.20"), ] |>
+  apply(1, \(x) table(factor(x, levels = 0:2,
+                             labels = c("hom_ADJ", "het", "hom_MI")),
+                      useNA = "ifany"))
+
+# Do the genotypes of HB_27/11/21_20 fit the 1:2:1 ratio expected for an F2?
+chisq.test(table(factor(dos_nh["HB_27/11/21_20", ], levels = 0:2)),
+           p = c(0.25, 0.5, 0.25))
+```
+
+1. **HB_27/11/21_20** is an early-generation hybrid, with a hybrid index of 0.46 and heterozygosity of 0.64, far above either pure cluster. The 70 loci at which it is homozygous exclude an F1, which should be heterozygous at essentially every diagnostic locus, and this is why NewHybrids assigns it to F2 with posterior probability 1.0. Its heterozygosity nevertheless exceeds the F2 expectation of 0.49, and its genotype counts of 43 : 126 : 27 depart significantly from the 1 : 2 : 1 ratio expected from an intercross (p = 9e-05) through an excess of heterozygotes. We therefore describe it as an early-generation hybrid that is close to, but not a clean fit for, F2. Because NewHybrids does not model genotyping error, and allelic dropout in DArT data inflates apparent homozygosity, the exclusion of F1 for this individual should be regarded as provisional.
+2. The two backcrosses, **KR_29/03/2022_44** and **At_D33_3.20**, fall along the adjacent-side edge of the triangle with hybrid indices of 0.30 and 0.32 and heterozygosities of 0.44 and 0.41, both near the expected value of 0.49 for a cross between an F1 and a pure adjacent individual. Their genotype counts (92 : 84 : 16 and 91 : 79 : 23) show the expected pattern of roughly half heterozygous calls with almost all remaining calls homozygous for the adjacent allele.
+3. **HaR_06/05/2022_12** has a hybrid index of 0.49 but heterozygosity of only 0.13, matching the expectation for a pure individual (0.13-0.16) rather than the 0.49 expected for an F2. Its genotypes (71 : 21 : 69) show alternative parental alleles fixed at different loci rather than combined within loci. This is the signature of a later-generation hybrid (F3 or beyond, possibly with some inbreeding), in which recombination and drift have homozygosed ancestry blocks while preserving an even overall ancestry ratio. NewHybrids assigns this individual to F2 with posterior probability 1.0 only because F2 is the sole class in its two-generation model that permits appreciable frequencies of both homozygote types; there is no later-generation category available to it. This individual also has the highest missingness of the four (39 of 200 loci uncalled), though not enough to account for the pattern.
+4. **BRR_41** falls at the fringe of the pure adjacent cluster (hybrid index 0.22, heterozygosity 0.17), consistent with its split posterior of 0.89 pure adjacent and 0.11 backcross.
+
+We therefore describe HB_27/11/21_20 as an early-generation hybrid and HaR_06/05/2022_12 as a later-generation hybrid, rather than assigning both strictly to F2. 
+
+## Independent check with triangulaR
+
+As an independent check on the calculations above we repeated the hybrid index and interclass heterozygosity analysis with the triangulaR package (Wiens, DeCicco & Colella 2025, Heredity 134:251-262). triangulaR selects ancestry-informative markers (AIMs) by allele frequency difference between two parental reference populations, then computes each individual's hybrid index and interclass heterozygosity at those markers. It does not perform model-based classification, so we use it to verify that the genotype summaries underlying our interpretation of the NewHybrids results are robust to an independent implementation and locus panel.
+
+We used the same parental reference groups as for NewHybrids (PureMI and PureADJ, with the remaining 38 individuals left as Unknown) and an allele frequency difference threshold of 0.73, matching the differential range (0.73-1.0) spanned by the 200-locus NewHybrids panel. triangulaR expects data in vcfR format, so we first convert the genlight object in memory (REF/ALT are placeholders since only the genotype codes are used).
+
+```{r}
+library(vcfR)
+library(triangulaR)
+
+gt_codes <- c("0" = "0/0", "1" = "0/1", "2" = "1/1")
+gtc <- t(as.matrix(ak.filtered.nr))
+mode(gtc) <- "character"
+gtc[] <- gt_codes[gtc]
+
+ak.vcfR <- new("vcfR",
+  meta = "##fileformat=VCFv4.2",
+  fix = cbind(CHROM = "1", POS = as.character(seq_len(nrow(gtc))),
+              ID = locNames(ak.filtered.nr), REF = "A", ALT = "T",
+              QUAL = ".", FILTER = "PASS", INFO = "."),
+  gt = cbind(FORMAT = "GT", gtc)
+)
+
+# Same parental reference groups as the NewHybrids run
+popmap <- nh_ind |>
+  select(id = ID, pop = nh_pop) |>
+  as.data.frame()
+```
+
+```{r}
+ak.vcfR.diff <- alleleFreqDiff(vcfR = ak.vcfR, pm = popmap,
+                               p1 = "PureADJ", p2 = "PureMI", difference = 0.73)
+
+# All triangulaR AIMs fall within the 200-locus NewHybrids panel
+sum(getID(ak.vcfR.diff) %in% nh_loci$locus)
+
+# p1 = PureADJ so that hybrid index counts Magnetic Island alleles
+hi.het <- hybridIndex(vcfR = ak.vcfR.diff, pm = popmap,
+                      p1 = "PureADJ", p2 = "PureMI")
+```
+
+195 loci passed the threshold, all of which are in the NewHybrids panel (the small shortfall relative to 200 reflects the per-group call-count filter and top-200 ranking used when building the NewHybrids input, which triangulaR does not apply). The hybrid index and heterozygosity values agree almost exactly with our manual calculation on the 200-locus panel (r \> 0.99 for both; maximum absolute difference \<= 0.02).
+
+```{r}
+hi.het |>
+  inner_join(triangle_df, by = c("id" = "ID")) |>
+  summarise(
+    cor_hi = cor(hybrid.index, hybrid_index),
+    cor_het = cor(heterozygosity, het),
+    max_diff_hi = max(abs(hybrid.index - hybrid_index)),
+    max_diff_het = max(abs(heterozygosity - het))
+  )
+```
+
+In the plot we label the 7 individuals flagged as highly admixed (\>5% minor ancestry) in [03.population_structure](03.population_structure.md). `triangle.plot` labels every individual when `ind.labels = TRUE`, so we blank the ids of all others (ggrepel skips empty labels).
+
+```{r}
+label_ids <- nh_results |> filter(minor_p > 0.05) |> pull(ID)
+
+hi.het |>
+  mutate(id = if_else(id %in% label_ids, id, "")) |>
+  triangle.plot(colors = c(cluster_colors[["C2"]], cluster_colors[["C1"]], "grey60"),
+                alpha = 0.7, ind.labels = TRUE, max.overlaps = Inf)
+ggsave("figures/figure_s7.svg", width = 7, height = 5)
+```
+
+The dashed curve is the heterozygosity expected under Hardy-Weinberg proportions at each hybrid index. The triangulaR values for the individuals highlighted in the NewHybrids analysis reproduce the pattern described above:
+
+```{r}
+hi.het |>
+  inner_join(nh_results |> select(ID, nh_class, nh_maxp), by = c("id" = "ID")) |>
+  filter(nh_class %in% c("F1", "F2", "BX_MI", "BX_ADJ") | id == "BRR_41") |>
+  arrange(desc(hybrid.index)) |>
+  select(id, nh_class, nh_maxp, hybrid.index, heterozygosity, perc.missing) |>
+  knitr::kable(digits = 3)
+```
+
+The triangulaR analysis corroborates the conclusions drawn from NewHybrids and the manual triangle plot: HB_27/11/21_20 sits high above the pure clusters (heterozygosity 0.64 at hybrid index 0.46), consistent with an early-generation hybrid; the two backcrosses to the adjacent population lie on the adjacent-side limb near the Hardy-Weinberg curve; HaR_06/05/2022_12 combines an intermediate hybrid index (0.49) with pure-level heterozygosity (0.13), the signature of a later-generation hybrid; and BRR_41 falls at the fringe of the pure adjacent cluster. As before, the pure clusters do not sit exactly at hybrid index 0 and 1 because the AIMs are not perfectly fixed between the parental groups.
