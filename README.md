@@ -10,6 +10,10 @@ Analysis is divided into the following steps
 - [Genetic Diversity](04.genetic_diversity.md)
 - [Estimating Effective Population Size](05.ne_estimates.md)
 - [Long Runs of Homozygosity](06.LROH)
+- [Recent Hybrids](07.hybrids)
+- [Sensitivity analyses for Ne estimates](08.ne_sensitivity)
+- [Sensitivity analyses for fine scale structure](09.fs_structure_sensitivity)
+- [Sensivivity analyses for genetic diversity](10.diversity_sensitivity)
 
 
 ## Running the code
