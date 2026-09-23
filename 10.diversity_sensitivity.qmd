@@ -1,0 +1,407 @@
+---
+title: "10 Sensitivity of genetic diversity to close kin"
+author: "Ira Cooke"
+format: gfm
+editor: source
+editor_options:
+  chunk_output_type: inline
+execute:
+  freeze: auto
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+```{r libraries}
+library(dartR.base)
+library(hierfstat)
+library(tidyverse)
+source("constants.R")
+options(readr.show_col_types = FALSE)
+```
+
+The genetic diversity analyses in `04.genetic_diversity.qmd` are based on
+`ak.pop.nm`, a dataset from which duplicates had been removed but not close kin. Here we recompute allelic richness (Ar), observed and expected heterozygosity
+(Ho, Hs) and Fis with kin removed. 
+
+```{r kin-list}
+excluded_kin <- read_tsv("relatedness/excluded_kin.tsv") |>
+  pull(excluded_kin) |>
+  unique()
+
+excluded_kin
+```
+
+## Datasets
+
+We use `mono.rm = FALSE` so that both datasets retain
+exactly the same loci. If monomorphic loci were dropped after kin removal the
+two analyses would be averaging over different locus sets, which would itself
+change mean diversity irrespective of which individuals were included.  Either way the effect is likely tiny since we are talking about just 5 SNPs that are monomorphic after removing kin.
+
+```{r datasets, results='hide'}
+load("cache/ak.pop.nm.rdata")
+
+ak.div.all <- ak.pop.nm
+
+ak.div.nokin <- gl.drop.ind(
+  ak.div.all,
+  ind.list = intersect(excluded_kin, indNames(ak.div.all)),
+  mono.rm = FALSE, recalc = TRUE
+)
+```
+
+```{r loci-check}
+c(all = nLoc(ak.div.all), nokin = nLoc(ak.div.nokin))
+```
+
+Seven of the additionally removed individuals come from two southern Magnetic Island
+bays, Geoffrey Bay (GB) and Picnic Bay (PB), and just one comes from the adjacent population.
+
+```{r sample-sizes}
+knitr::kable(
+  full_join(
+    as.data.frame(table(pop(ak.div.all))),
+    as.data.frame(table(pop(ak.div.nokin))),
+    by = "Var1", suffix = c("_all", "_nokin")
+  ) |>
+    rename(site = Var1, n_all = Freq_all, n_nokin = Freq_nokin) |>
+    mutate(n_removed = n_all - n_nokin)
+)
+```
+
+## Population groupings
+
+We report statistics for the three main groupings (adjacent reefs, north and south Magnetic Island).
+Merging is done without filtering monomorphs, again to keep the locus set fixed.
+
+```{r groupings, results='hide'}
+adjacent_sites <- setdiff(location_codes, maggie_sites)
+
+merge_no_so <- function(gl) {
+  gl |>
+    gl.merge.pop(old = maggie_no_sites, new = "no") |>
+    gl.merge.pop(old = maggie_so_sites, new = "so") |>
+    gl.merge.pop(old = adjacent_sites, new = "ADJ")
+}
+
+merge_adj_mi <- function(gl) {
+  gl |>
+    gl.merge.pop(old = maggie_sites, new = "MI") |>
+    gl.merge.pop(old = adjacent_sites, new = "ADJ")
+}
+
+# The all-individuals hierfstat objects were written by 04.genetic_diversity.qmd.
+# Reading them rather than rebuilding guarantees that the observed statistics
+# here are computed on exactly the objects the permutation jobs were given.
+hfstat_all <- read_rds("basic_stats/hfstat.rds")
+
+# The equivalent kin-removed objects, in the same list order, written out to
+# serve as input to the permutation jobs.
+if (file.exists("basic_stats/hfstat_nokin.rds")) {
+  hfstat_nokin <- read_rds("basic_stats/hfstat_nokin.rds")
+} else {
+  hfstat_nokin <- list(
+    ak.div.nokin,
+    merge_no_so(ak.div.nokin),
+    merge_adj_mi(ak.div.nokin)
+  ) |>
+    map(function(gl) gl2gi(gl) |> genind2hierfstat())
+
+  write_rds(hfstat_nokin, "basic_stats/hfstat_nokin.rds")
+}
+
+names(hfstat_all) <- c("site", "no.so", "adj.mi")
+names(hfstat_nokin) <- c("site", "no.so", "adj.mi")
+```
+
+Both sets of objects carry the same loci, and differ only by the eight
+individuals.
+
+```{r grouping-check}
+knitr::kable(
+  tibble(
+    grouping = names(hfstat_all),
+    n_ind_all = map_int(hfstat_all, nrow),
+    n_ind_nokin = map_int(hfstat_nokin, nrow),
+    n_loci = map_int(hfstat_nokin, function(x) ncol(x) - 1L)
+  )
+)
+```
+
+## Diversity statistics
+
+`allelic.richness` rarefies to `2 * min(ind.count(data))`, i.e. the smallest
+number of genotyped individuals seen in any population at any locus. Since we would like to compare results with/without kin we need to make sure we set this to the same value in each analysis.  We therefore fix `min.n` to a common value across the two datasets being compared.  This means re-running the analysis including kin (with a slightly lower min.n) and running analysis without kin at the same min.n
+
+```{r stats}
+pop_means <- function(hf, min_n) {
+  bs <- basic.stats(hf)
+  list(
+    Ar = allelic.richness(hf, min.n = min_n)$Ar,
+    Ho = bs$Ho,
+    Hs = bs$Hs,
+    Fis = bs$Fis
+  ) |>
+    # Each element is a loci x populations matrix; average over loci
+    map(function(m) colMeans(m, na.rm = TRUE) |> enframe(name = "pop")) |>
+    bind_rows(.id = "stat")
+}
+
+compare_diversity <- function(hf_all, hf_nokin) {
+  min_n <- min(
+    2 * min(ind.count(hf_all), na.rm = TRUE),
+    2 * min(ind.count(hf_nokin), na.rm = TRUE)
+  )
+
+  bind_rows(
+    "All individuals" = pop_means(hf_all, min_n),
+    "Kin removed" = pop_means(hf_nokin, min_n),
+    .id = "dataset"
+  ) |>
+    mutate(min_n = min_n)
+}
+
+div_site <- compare_diversity(hfstat_all$site, hfstat_nokin$site)
+div_group <- compare_diversity(hfstat_all$no.so, hfstat_nokin$no.so)
+div_adj_mi <- compare_diversity(hfstat_all$adj.mi, hfstat_nokin$adj.mi)
+```
+
+```{r rarefaction-depth}
+c(
+  site = unique(div_site$min_n),
+  no.so = unique(div_group$min_n),
+  adj.mi = unique(div_adj_mi$min_n)
+)
+```
+
+### Three main groupings
+
+```{r group-table}
+compare_table <- function(div) {
+  div |>
+    select(dataset, stat, pop, value) |>
+    pivot_wider(names_from = dataset, values_from = value) |>
+    mutate(difference = `Kin removed` - `All individuals`) |>
+    arrange(stat, pop)
+}
+
+knitr::kable(compare_table(div_group), digits = 4)
+```
+
+```{r}
+compare_table(div_group) |>
+  mutate(stat = ifelse(stat=="Hs","He",stat)) |> 
+  pivot_longer(c(3,4)) |> 
+  ggplot(aes(x=pop,y=value)) + 
+  geom_point(aes(color=name),size=3,alpha=0.8) + 
+  facet_wrap(~stat,scales="free") + 
+  theme_bw() + 
+  ylab("") + xlab("") + theme(legend.position = "bottom",legend.title = element_blank())
+ggsave("figures/figure_s15.png",width = 8,height = 5)
+```
+
+
+Note that these Ar values differ slightly from those reported in
+`04.genetic_diversity.qmd` because they are computed at a common rarefaction depth
+(`r unique(div_group$min_n)` alleles) across kin-removed and kin-included rather than at the slightly higher depth used in the main analysis.
+
+## Permutation tests
+
+Significance of the differences between groupings was assessed by permutation,
+randomly reassigning individuals to populations and recomputing each statistic.
+Both datasets were run as 1000-iteration slurm array jobs on an external HPC
+system using the scripts in `basic_stats`:
+
+| Slurm script | Worker | Input | Output |
+|:--|:--|:--|:--|
+| `01.ar_perm.sh` | `run_permute.R` | `hfstat.rds` | `perms/` |
+| `02.ar_perm_nokin.sh` | `run_permute_nokin.R` | `hfstat_nokin.rds` | `perms_nokin/` |
+| `03.ar_perm_all.sh` | `run_permute_all.R` | `hfstat.rds` | `perms_all/` |
+
+We use `perms_all` and `perms_nokin` here. These differ from the original `perms/`
+in one respect: the allelic richness rarefaction depth is fixed at a value common
+to both datasets rather than the slightly higher value if only the full dataset is being considered. 
+
+```{r read-perms}
+#Each permutation file holds full loci by population matrices and the two
+#directories total around 7 GB, so we reduce each file to per-population means as
+#it is read.
+
+if (file.exists("cache/perm_summary_kin.rds")) {
+  perm_summary <- read_rds("cache/perm_summary_kin.rds")
+} else {
+  summarise_perm_file <- function(path) {
+    p <- read_rds(path)
+    imap(p, function(g, gname) {
+      list(
+        Ar = colMeans(g$Ar$Ar, na.rm = TRUE),
+        Ho = colMeans(g$basic_stats$Ho, na.rm = TRUE),
+        Hs = colMeans(g$basic_stats$Hs, na.rm = TRUE),
+        Fis = colMeans(g$basic_stats$Fis, na.rm = TRUE)
+      ) |>
+        map(function(v) enframe(v, name = "pop")) |>
+        bind_rows(.id = "stat")
+    }) |>
+      bind_rows(.id = "grouping")
+  }
+
+  summarise_perm_dir <- function(dir) {
+    list.files(dir, pattern = "\\.rds$", full.names = TRUE) |>
+      set_names(function(p) tools::file_path_sans_ext(basename(p))) |>
+      map(summarise_perm_file) |>
+      bind_rows(.id = "rep")
+  }
+
+  perm_summary <- bind_rows(
+    "All individuals" = summarise_perm_dir("basic_stats/perms_all"),
+    "Kin removed" = summarise_perm_dir("basic_stats/perms_nokin"),
+    .id = "dataset"
+  )
+
+  write_rds(perm_summary, "cache/perm_summary_kin.rds")
+}
+```
+
+
+The test statistic is the difference in the locus-averaged statistic between two
+populations. The p-value is the proportion of permutations whose absolute
+difference is at least as large as the observed one, computed as
+`(n_extreme + 1) / (n_perm + 1)` so that the smallest attainable value is 1/1001
+rather than zero.
+
+```{r perm-tests}
+observed_means <- bind_rows(
+  no.so = div_group,
+  adj.mi = div_adj_mi,
+  .id = "grouping"
+) |>
+  select(dataset, grouping, stat, pop, value)
+
+group_contrasts <- tribble(
+  ~grouping, ~contrast,  ~pop_a, ~pop_b,
+  "adj.mi",  "ADJ - MI", "ADJ",  "MI",
+  "no.so",   "ADJ - no", "ADJ",  "no",
+  "no.so",   "ADJ - so", "ADJ",  "so",
+  "no.so",   "no - so",  "no",   "so"
+)
+
+contrast_diffs <- function(means) {
+  means |>
+    inner_join(group_contrasts, by = "grouping", relationship = "many-to-many") |>
+    filter(pop == pop_a | pop == pop_b) |>
+    mutate(side = if_else(pop == pop_a, "a", "b")) |>
+    select(any_of(c("dataset", "rep")), grouping, contrast, stat, side, value) |>
+    pivot_wider(names_from = side, values_from = value) |>
+    mutate(diff = a - b) |>
+    select(-a, -b)
+}
+
+perm_tests <- contrast_diffs(perm_summary) |>
+  rename(perm_diff = diff) |>
+  left_join(
+    contrast_diffs(observed_means) |> rename(obs_diff = diff),
+    by = c("dataset", "grouping", "contrast", "stat")
+  ) |>
+  group_by(dataset, grouping, contrast, stat) |>
+  summarise(
+    obs_diff = first(obs_diff),
+    n_perm = n(),
+    n_extreme = sum(abs(perm_diff) >= abs(obs_diff)),
+    p = (n_extreme + 1) / (n_perm + 1),
+    .groups = "drop"
+  )
+
+perm_test_table <- function(s) {
+  perm_tests |>
+    filter(stat == s) |>
+    select(grouping, contrast, dataset, obs_diff, p) |>
+    arrange(grouping, contrast, dataset) |>
+    knitr::kable(digits = 4)
+}
+```
+
+### Allelic richness
+
+```{r ar-tests}
+perm_test_table("Ar")
+```
+
+Adjacent reefs carry significantly higher allelic richness than either Magnetic
+Island grouping, while north and south Magnetic Island are not distinguishable
+from each other. Both conclusions hold whether or not close kin are included, and
+the observed differences are essentially unchanged.
+
+```{r ar-null-plot, fig.width=9, fig.height=5}
+contrast_diffs(perm_summary) |>
+  filter(stat == "Ar") |>
+  ggplot(aes(x = diff)) +
+  geom_histogram(bins = 40) +
+  geom_vline(
+    data = contrast_diffs(observed_means) |> filter(stat == "Ar"),
+    aes(xintercept = diff),
+    linetype = "dashed"
+  ) +
+  facet_grid(dataset ~ contrast, scales = "free") +
+  theme_bw() +
+  labs(x = "Difference in mean Ar", y = "Permutations")
+```
+
+### Heterozygosity and Fis
+
+Observed Heterozygosity (Ho)
+```{r het-tests}
+perm_test_table("Ho")
+```
+
+Expected Heterozygosity (He)
+
+```{r}
+perm_test_table("Hs")
+```
+
+Fis
+
+```{r}
+perm_test_table("Fis")
+```
+
+These results show the same conclusions (based on a p-value threshold of 0.05) as were found in `04.genetic_diversity`.  Every
+contrast involving observed heterozygosity (Ho) is significant, including north
+versus south Magnetic Island, and in each case Magnetic Island is the *higher*
+value. None of the expected heterozygosity (Hs) contrasts reach significance. Fis is significantly lower at Magnetic Island than at adjacent reefs.
+
+## Summary
+
+```{r summary-values, include=FALSE}
+max_abs_diff <- compare_table(div_site) |>
+  group_by(stat) |>
+  summarise(max_abs_diff = max(abs(difference))) |>
+  deframe()
+
+changed_sites <- compare_table(div_site) |>
+  filter(abs(difference) > 1e-10) |>
+  pull(pop) |>
+  unique()
+
+# Size of the ADJ vs Magnetic Island contrast, for comparison with the kin effect
+ar_gap <- compare_table(div_group) |>
+  filter(stat == "Ar") |>
+  summarise(gap = max(`Kin removed`) - min(`Kin removed`)) |>
+  pull(gap)
+
+# Keep small values out of scientific notation, which renders badly in gfm
+fmt <- function(x, digits = 2) format(signif(x, digits), scientific = FALSE)
+
+# Do the two datasets agree on which contrasts are significant at 0.05?
+sig_agreement <- perm_tests |>
+  select(dataset, grouping, contrast, stat, p) |>
+  pivot_wider(names_from = dataset, values_from = p) |>
+  mutate(agree = (`All individuals` < 0.05) == (`Kin removed` < 0.05))
+```
+
+```{r}
+sig_agreement |> knitr::kable()
+```
+

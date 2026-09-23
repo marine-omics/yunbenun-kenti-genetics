@@ -1,0 +1,430 @@
+---
+title: "9 Sensitivity of fine scale population structure to close kin"
+author: "Ira Cooke"
+output: github_document
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(dartR.base)
+library(dartR.popgen)
+library(vegan)
+source("constants.R")
+options(readr.show_col_types = FALSE)
+```
+
+Fine scale population structure analysis, including PCA and the isolation-by-distance (IBD) analysis in `03.population_structure.qmd` is based on a dataset from which a single individual (`A31`) had been removed. This individual had a relatedness value on the upper limit of expected values for sibling or parent-child relationships (very close kin) and was removed because it led to a distortion of signal in PCA. Subsequent relatedness analysis identified a larger set of related individuals at lower kinship levels (up to 3rd degree). Note also that since A31 is from the widespread lineage where we observed no population structure and its inclusion or exclusion would be unlikely to meaningfully alter results.  Therefore we focus here on sensitivity to inclusion of the 7 remaining individuals, all of which are from south Yunbenun.
+
+```{r kin-list}
+excluded_kin <- read_tsv("relatedness/excluded_kin.tsv") |>
+  pull(excluded_kin) |>
+  unique()
+
+excluded_kin
+```
+
+## Datasets
+
+The baseline dataset and its pairwise Fst values are read directly from the cached
+objects used in `03.population_structure.qmd`.
+
+```{r baseline}
+ak.pop.nm.nosibs <- read_rds("fst/ak.pop.nm.nosibs.rds")
+fst.pop <- read_rds("fst/fst.pop.nosibs.rds")
+```
+
+For the sensitivity analysis we drop the remaining kin (`A31` is already absent from
+the baseline dataset) and recompute pairwise Fst. 
+
+```{r nokin, results='hide'}
+if (file.exists("fst/fst.pop.nokin.rds")) {
+  ak.pop.nm.nokin <- read_rds("fst/ak.pop.nm.nokin.rds")
+  fst.pop.nokin <- read_rds("fst/fst.pop.nokin.rds")
+} else {
+  ak.pop.nm.nokin <- ak.pop.nm.nosibs |>
+    gl.drop.ind(
+      ind.list = intersect(excluded_kin, indNames(ak.pop.nm.nosibs)),
+      mono.rm = TRUE, recalc = TRUE
+    ) |>
+    gl.filter.allna()
+
+  fst.pop.nokin <- gl.fst.pop(ak.pop.nm.nokin, nboots = 1)
+
+  write_rds(ak.pop.nm.nokin, "fst/ak.pop.nm.nokin.rds")
+  write_rds(fst.pop.nokin, "fst/fst.pop.nokin.rds")
+}
+```
+
+All of the additionally removed individuals come from two southern Magnetic Island bays, Geoffrey Bay (GB) and Picnic Bay (PB).
+
+```{r sample-sizes}
+knitr::kable(
+  full_join(
+    as.data.frame(table(pop(ak.pop.nm.nosibs))),
+    as.data.frame(table(pop(ak.pop.nm.nokin))),
+    by = "Var1", suffix = c("_all", "_nokin")
+  ) |>
+    rename(site = Var1, n_all = Freq_all, n_nokin = Freq_nokin) |>
+    mutate(n_removed = n_all - n_nokin)
+)
+```
+
+Removing individuals also renders a small number of loci monomorphic, so the two
+analyses are based on slightly different locus sets. The difference is just 5 loci though. 
+
+```{r n-loci}
+c(all = nLoc(ak.pop.nm.nosibs), nokin = nLoc(ak.pop.nm.nokin))
+```
+
+## Fst and sea distance matrices
+
+`gl.fst.pop` returns a lower-triangular matrix; we mirror it so that every pair can
+be looked up in either orientation.
+
+```{r fst-matrices}
+as_full_matrix <- function(x) {
+  m <- if (is.list(x)) as.matrix(x$Fsts) else as.matrix(x)
+  m[upper.tri(m)] <- t(m)[upper.tri(m)]
+  m
+}
+
+fst_matrices <- list(
+  "All individuals" = as_full_matrix(fst.pop),
+  "Kin removed" = as_full_matrix(fst.pop.nokin)
+)
+```
+
+Sea distances are the manually measured shortest paths between sites that avoid
+crossing land, exactly as used in `03.population_structure.qmd`.
+
+```{r sea-distances}
+sea_dist_pairs <- read_csv("IBD_ak.gen.csv") |>
+  select(Dist, Pair) |>
+  separate(Pair, into = c("pop1", "pop2"), sep = "-")
+
+sea_dist.matrix <- sea_dist_pairs |>
+  mutate(across(c(pop1, pop2), ~ factor(.x, levels = location_codes))) |>
+  complete(pop1, pop2) |>
+  pivot_wider(names_from = pop2, values_from = Dist) |>
+  column_to_rownames("pop1") |>
+  as.matrix()
+
+get_dist <- function(p1, p2) {
+  r <- c(sea_dist.matrix[p1, p2], sea_dist.matrix[p2, p1]) |> na.omit() |> unique()
+  if (length(r) == 0) return(0)
+  r
+}
+
+sea_dist_fullmatrix <- tibble(pop1 = location_codes, pop2 = location_codes) |>
+  complete(pop1, pop2) |>
+  rowwise() |>
+  mutate(Dist = get_dist(pop1, pop2)) |>
+  pivot_wider(names_from = pop2, values_from = Dist) |>
+  column_to_rownames("pop1") |>
+  as.matrix()
+```
+
+## Mantel tests
+
+Mantel tests are run separately within Magnetic Island and within the adjacent
+reefs, using the same site sets, number of permutations and random seeds as the
+original analysis.
+
+```{r mantel}
+adjacent_sites <- setdiff(location_codes, maggie_sites)
+test_sites <- list("Magnetic Island" = maggie_sites, "Adjacent" = adjacent_sites)
+test_seeds <- c("Magnetic Island" = 4187, "Adjacent" = 8342)
+
+run_mantel <- function(dataset, test) {
+  sites <- test_sites[[test]]
+  set.seed(test_seeds[[test]])
+  mt <- ade4::mantel.randtest(
+    as.dist(sea_dist_fullmatrix[sites, sites]),
+    as.dist(fst_matrices[[dataset]][sites, sites]),
+    nrepet = 10000
+  )
+  tibble(
+    n_sites = length(sites),
+    n_pairs = choose(length(sites), 2),
+    mantel_r = mt$obs,
+    R2 = mt$obs^2,
+    p = mt$pvalue
+  )
+}
+
+mantel_results <- expand_grid(
+  dataset = names(fst_matrices),
+  test = names(test_sites)
+) |>
+  mutate(res = map2(dataset, test, run_mantel)) |>
+  unnest(res)
+
+knitr::kable(mantel_results, digits = 3)
+```
+
+## Fst versus sea distance
+
+```{r ibd-plot, fig.width=10, fig.height=5}
+ibd_data <- fst_matrices |>
+  map(function(m) {
+    m |>
+      as.data.frame() |>
+      rownames_to_column("pop1") |>
+      pivot_longer(-1, names_to = "pop2", values_to = "Fst") |>
+      na.omit()
+  }) |>
+  bind_rows(.id = "dataset") |>
+  inner_join(sea_dist_pairs, by = c("pop1", "pop2")) |>
+  mutate(contrast = case_when(
+    (pop1 %in% maggie_sites) & (pop2 %in% maggie_sites) ~ "Within Yunbenun",
+    !(pop1 %in% maggie_sites) & !(pop2 %in% maggie_sites) ~ "Within Adjacent",
+    .default = "between"
+  ))
+
+ibd_data |>
+  filter(contrast != "between") |>
+  ggplot(aes(x = Dist, y = Fst, color = dataset)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~contrast, scales = "free") +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(
+    color = "Dataset:",
+    x = "Sea Distance / km",
+    y = expression("F"["st"])
+  )
+```
+
+Pairwise Fst values from the two datasets are also compared directly below; points
+falling on the 1:1 line indicate pairs unaffected by kin removal.
+
+```{r fst-scatter, fig.width=5, fig.height=5}
+ibd_data |>
+  filter(contrast != "between") |>
+  select(dataset, pop1, pop2, contrast, Fst) |>
+  pivot_wider(names_from = dataset, values_from = Fst) |>
+  ggplot(aes(x = `All individuals`, y = `Kin removed`, color = contrast)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(color = "Contrast:")
+```
+
+## Summary
+
+```{r summary-values, include=FALSE}
+get_val <- function(ds, tst, col) {
+  mantel_results |>
+    filter(dataset == ds, test == tst) |>
+    pull({{ col }}) |>
+    round(3)
+}
+```
+
+None of the additionally excluded individuals come from adjacent reefs, so the
+adjacent test is unchanged (r = `r get_val("Kin removed", "Adjacent", mantel_r)`,
+p = `r get_val("Kin removed", "Adjacent", p)`).
+
+Within Magnetic Island the relationship is weakened but not removed: the Mantel
+correlation falls from `r get_val("All individuals", "Magnetic Island", mantel_r)`
+(p = `r get_val("All individuals", "Magnetic Island", p)`) to
+`r get_val("Kin removed", "Magnetic Island", mantel_r)`
+(p = `r get_val("Kin removed", "Magnetic Island", p)`), and the variance in pairwise
+Fst explained by sea distance drops from
+`r get_val("All individuals", "Magnetic Island", R2)` to
+`r get_val("Kin removed", "Magnetic Island", R2)`. Since the excluded kin are all
+from the two southern bays GB and PB, this is expected: their removal slightly
+reduces the north/south Fst contrast that drives the signal. 
+
+
+## PCA
+
+```{r}
+# Data was prepared in 03.population_structure
+
+load("cache/pcoa_ak_filtered_nr_mag.rdata")
+load("cache/pcoa_ak_filtered_nr_mag_nosibs.rdata")
+load("cache/metadata.rdata")
+
+# Dominant K=3 cluster per individual, as used in 03.population_structure
+dominant_clusters_run10 <- read_table(
+  "structure/mag.1/ak.pop.mag.nm.k3.out.anc.txt",
+  col_names = c("X1", "Label", "(%Miss)", "C1", "C2", "C3"), skip = 2
+) |>
+  cbind(read_table("structure/ak.pop.mag.nm.samples.txt", col_names = "ID")) |>
+  select(ID, starts_with("C")) |>
+  pivot_longer(-ID, names_to = "cluster", values_to = "p") |>
+  group_by(ID) |>
+  slice_max(p) |>
+  select(ID, cluster, p)
+```
+
+
+After removing all close kin identified previously (relatedness > 0.045) we see that the PCA still retains the same three cluster structure, however, since many of the removed individuals were from cluster 3 this cluster is less prominent. 
+
+```{r}
+pcoa_var_mag_nosibs <- (pcoa_ak_filtered_nr_mag_nosibs$eig/sum(pcoa_ak_filtered_nr_mag_nosibs$eig))[1:2]
+
+p_pca <- pcoa_ak_filtered_nr_mag_nosibs$scores |> 
+  as.data.frame() |> 
+  rownames_to_column("ID") %>% 
+  left_join(metadata,by="ID") %>% 
+  left_join(dominant_clusters_run10,by="ID") |> 
+  ggplot(aes(x=PC1,y=PC2)) + 
+  geom_point(aes(color=cluster)) + 
+  xlab(paste("PC1 (",round(pcoa_var_mag_nosibs[1]*100,1)," %)",sep="")) +
+  ylab(paste("PC2 (",round(pcoa_var_mag_nosibs[2]*100,1)," %)",sep="")) +
+  theme_bw()
+```
+
+
+```{r}
+p_ibd <- ibd_data |>
+  filter(contrast != "between") |>
+  filter(contrast == "Within Yunbenun") |> 
+  ggplot(aes(x = Dist, y = Fst, color = dataset)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(
+    color = "Dataset:",
+    x = "Sea Distance / km",
+    y = expression("F"["st"])
+  )
+
+library(cowplot)
+
+plot_grid(p_pca,p_ibd)
+
+ggsave("figures/figure_s14.png",width = 12,height = 5)
+```
+
+### Comparing the two ordinations directly
+
+The two PCAs are computed on different individuals (117 vs 110) and slightly
+different locus sets, and PC axes are only defined up to rotation, reflection and
+scaling. They can therefore not be overlaid as-is. Instead we use a Procrustes
+rotation (`vegan::protest`) of the PC1--PC2 scores for the 110 individuals present
+in both analyses, which finds the rotation, reflection and uniform rescaling that
+best superimposes one ordination on the other and reports the residual mismatch.
+
+```{r procrustes}
+shared_ids <- intersect(
+  rownames(pcoa_ak_filtered_nr_mag$scores),
+  rownames(pcoa_ak_filtered_nr_mag_nosibs$scores)
+)
+removed_ids <- setdiff(rownames(pcoa_ak_filtered_nr_mag$scores), shared_ids)
+
+set.seed(4817)
+pro_test <- protest(
+  pcoa_ak_filtered_nr_mag$scores[shared_ids, 1:2],
+  pcoa_ak_filtered_nr_mag_nosibs$scores[shared_ids, 1:2],
+  permutations = 9999
+)
+pro_test
+```
+
+The two configurations agree closely (Procrustes correlation
+`r round(pro_test$t0, 3)`; residual sum of squares
+`r round(pro_test$ss, 3)` of the total). 
+
+In the plot each arrow runs from an individual's position in the all-individuals
+PCA to its position in the kin-removed PCA after alignment. Crosses mark the seven
+removed kin at their positions in the all-individuals PCA.
+
+```{r procrustes-plot, fig.width=6, fig.height=5}
+pro_df <- bind_cols(
+  tibble(ID = shared_ids),
+  as.data.frame(pro_test$X) |> setNames(c("PC1_all", "PC2_all")),
+  as.data.frame(pro_test$Yrot) |> setNames(c("PC1_nokin", "PC2_nokin"))
+) |>
+  mutate(resid = sqrt((PC1_all - PC1_nokin)^2 + (PC2_all - PC2_nokin)^2)) |>
+  left_join(dominant_clusters_run10, by = "ID")
+
+# Put the removed individuals into the same standardised space as pro_test$X
+pro_centre <- scale(pcoa_ak_filtered_nr_mag$scores[shared_ids, 1:2], scale = FALSE)
+pro_scale <- sqrt(sum(pro_centre^2))
+
+removed_df <- sweep(
+  pcoa_ak_filtered_nr_mag$scores[removed_ids, 1:2, drop = FALSE],
+  2, attr(pro_centre, "scaled:center")
+) |>
+  (\(m) m / pro_scale)() |>
+  as.data.frame() |>
+  setNames(c("PC1_all", "PC2_all")) |>
+  rownames_to_column("ID") |>
+  left_join(dominant_clusters_run10, by = "ID")
+
+ggplot(pro_df, aes(x = PC1_all, y = PC2_all)) +
+  geom_segment(
+    aes(xend = PC1_nokin, yend = PC2_nokin, colour = cluster),
+    arrow = arrow(length = unit(0.06, "cm")), alpha = 0.8
+  ) +
+  geom_point(aes(colour = cluster), size = 0.9) +
+  geom_point(data = removed_df, shape = 4, size = 2.5, stroke = 0.8) +
+  theme_bw() +
+  labs(x = "Procrustes axis 1", y = "Procrustes axis 2", colour = "Cluster")
+```
+
+Displacements are small relative to the separation between the three clusters, and
+no individual changes cluster membership. The table below summarises the two axes:
+alongside the proportion of total variance each explains, we report the proportion
+of variation along each axis explained by an individual's dominant K=3 cluster
+(both restricted to the shared individuals, so the comparison is not affected by
+the change in sample size).
+
+```{r pca-axis-comparison}
+cluster_r2 <- function(scores, ids) {
+  d <- as.data.frame(scores[ids, 1:2]) |>
+    setNames(c("PC1", "PC2")) |>
+    rownames_to_column("ID") |>
+    left_join(dominant_clusters_run10, by = "ID")
+  map_dbl(c("PC1", "PC2"), \(ax) summary(lm(d[[ax]] ~ d$cluster))$r.squared)
+}
+
+knitr::kable(
+  tibble(
+    metric = c("% variance PC1", "% variance PC2", "cluster R2 on PC1", "cluster R2 on PC2"),
+    `All individuals` = c(
+      100 * (pcoa_ak_filtered_nr_mag$eig / sum(pcoa_ak_filtered_nr_mag$eig))[1:2],
+      cluster_r2(pcoa_ak_filtered_nr_mag$scores, shared_ids)
+    ),
+    `Kin removed` = c(
+      100 * (pcoa_ak_filtered_nr_mag_nosibs$eig / sum(pcoa_ak_filtered_nr_mag_nosibs$eig))[1:2],
+      cluster_r2(pcoa_ak_filtered_nr_mag_nosibs$scores, shared_ids)
+    )
+  ),
+  digits = 3
+)
+```
+
+PC1 is essentially unaffected. PC2 is the axis that responds to kin removal: its
+share of total variance falls from 2.6% to 1.9%, and the proportion of PC2
+explained by cluster identity falls from 0.63 to 0.49. This is consistent with
+where the removed individuals sat, as four of the seven were C3 individuals lying
+at the very top of PC2 (97th--100th percentile), with a fifth at the C2 extreme.
+
+```{r removed-kin-position}
+knitr::kable(
+  removed_df |>
+    mutate(PC2_percentile = round(100 * ecdf(pro_df$PC2_all)(PC2_all))) |>
+    select(ID, cluster, PC2_all, PC2_percentile) |>
+    arrange(desc(PC2_all)),
+  digits = 3
+)
+```
+
+So part of the apparent spread along PC2 in the full dataset was carried by close
+kin, and the three-cluster arrangement is correspondingly less crisp once they are
+removed. It is not created by them: the same three groups remain separated on the
+same axes in the same relative arrangement, and the alignment between the two
+ordinations is high.
