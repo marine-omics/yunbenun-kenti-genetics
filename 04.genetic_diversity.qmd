@@ -33,7 +33,7 @@ As a starting point for genetic diversity analyses we use the same filtered set 
 
 -   Highly admixed individuals (admixture proportion \> 5%) between the two major lineages in this study (ie Maggie vs surrounding reefs) have been excluded. See note in the section on population structure about this threshold and the relatively small number of individuals it excludes.
 
--   Individuals that are likely genetic clones or close relatives have been removed as these are undesirable in pretty much all analyses.
+-   Individuals that are likely genetic clones or replicates have been removed as these are undesirable in pretty much all analyses.  
 
 The starting data satisfying all these criteria is called `ak.pop.nm` as was created in the `03.population_structure` script
 
@@ -146,6 +146,7 @@ if ( file.exists("cache/perm_data.rds")){
 
 ```{r}
 m_vs_adj_actual_value <- ar.mi.adj$Ar %>% colMeans(na.rm = TRUE) %>% diff()
+
 mi_adj_ar <- perm_data %>% map(~ colMeans(.x$adj.mi$Ar$Ar)) %>% 
   bind_rows() %>% 
   mutate(diff = abs(MI-ADJ)) 
@@ -253,7 +254,7 @@ allhet.stats %>%
   theme(legend.position = "top", legend.title = element_blank()) 
 ```
 
-Permutation tests were also used to calculate significance of differences for these statistics.  This is done on aggregated data, grouped into ADJ, NO and SO.  Note the somewhat unexpected result that the smaller populations at Magnetic Island show slightly higher heterozygosity and lower Fis than the larger Adjacent population.  Note that this effect is numerically very small, and likely reflects expected heterozygote excess in small populations due to differences in allele frequencies between sexes as a result of binomial sampling error.  This effect applies equally to self-incompatible hermaphroditic species [@Balloux2004-yn] such as Acroporid corals and forms the basis of the heterozygote excess method for calculating Ne [@Luikart1999-yh]
+Permutation tests were also used to calculate significance of differences for these statistics.  This is done on aggregated data, grouped into ADJ, NO and SO.  Note the somewhat unexpected result that the smaller populations at Magnetic Island show slightly higher observed heterozygosity (Ho) and lower Fis than the larger Adjacent population.  Note that this effect is numerically very small, and likely reflects heterozygote excess expected in small populations due to differences in allele frequencies between sexes as a result of binomial sampling error.  This effect applies equally to self-incompatible hermaphroditic species [@Balloux2004-yn] such as Acroporid corals and forms the basis of the heterozygote excess method for calculating Ne [@Luikart1999-yh]
 
 ```{r}
 test_basic_stat <- function(stat){

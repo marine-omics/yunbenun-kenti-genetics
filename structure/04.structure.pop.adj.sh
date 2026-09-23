@@ -6,7 +6,7 @@ run_structure(){
 	mkdir -p adj.${rep}
 	cd adj.${rep}
 
-	structure -K ${k} -L 3848 -N 286  -m ../ak.mainparams.pop.adj.nm.txt -i ../ak.pop.adj.nm.str -e ../extraparams -o ak.pop.adj.nm.k${k}.out
+	structure -K ${k} -L 3852 -N 286  -m ../ak.mainparams.pop.adj.nm.txt -i ../ak.pop.adj.nm.str -e ../extraparams -o ak.pop.adj.nm.k${k}.out
 	#Extract ancestries
 	grep -A 288 'Inferred ancestry of individuals' ak.pop.adj.nm.k${k}.out_f | sed 's/://'> ak.pop.adj.nm.k${k}.out.anc.txt
 
@@ -16,10 +16,6 @@ run_structure(){
 export -f run_structure
 
 parallel --bar -j 6 run_structure ::: $(seq 1 7) ::: $(seq 1 20)
-
-
-
-
 
 
 

@@ -11,6 +11,7 @@ execute:
 
 ```{r}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+options(readr.show_col_types = FALSE)
 ```
 
 # Abbreviations
@@ -63,7 +64,6 @@ BiocManager::install("SNPRelate")
 
 # Install dartRverse (dartRverse) & core (dartR.base, dartR.data)
 install.packages("dartRverse")
-library("dartRverse")
 ```
 
 ```{r, eval=FALSE}
@@ -141,6 +141,39 @@ Inspect the individual call rates and remove duplicates with the lower call rate
 ```{r}
 dartR.base::gl.report.callrate(ak, method = "ind", ind.to.list = 528)
 ```
+
+# Duplicates
+
+16 samples were deliberately duplicated in addition to any technical replicates provided by DaRT. 
+
+```{r,eval=FALSE}
+ab_pairs <- read_tsv("raw_data/dup_pairs.tsv",col_names = c("A","B"))
+```
+
+Using the dartR `gl.report.replicates` function we see that all 16 are identified as having extremely high concordance but the picture is slightly messy because there are also clusters of related individuals.  We retain all individuals for now and will remove clones/replicates in the next step.
+
+```{r,eval=FALSE}
+rep_res <- gl.report.replicates(ak,plot.out = FALSE)
+
+dup_samples <- c(ab_pairs$A,ab_pairs$B)
+
+dup_matches <- rep_res$table.rep |>
+  filter(ind1 %in% dup_samples & ind2 %in% dup_samples) |>
+  arrange(desc(perc))
+```
+
+
+For now we note that, of our 16 known pairs the following are flagged for removal because they had the lower callrate of the pair.
+
+> 'At_162_J20.1', 'At_163_J20.1', 'B1', 'A2', 'A3', 'A7', 'B8', 'A9', 'A10', 'B11', 'A15', 'B17', 'B18', 'A19', 'A21', 'WB_03/04/2022_36'
+
+These duplicates come from South Orpheus (15 samples) and Wilson Bay (1 sample).
+
+```{r}
+# Not removing duplicates
+ak1 <- ak
+```
+
 
 # Filtering
 
@@ -375,7 +408,7 @@ ak.filtered$ind.names
 
 ```{r}
 # Save filtered and clean dataset
-save(ak.filtered, file="cache/ak.filtered.rdata")
+save(ak.filtered, file="cache/ak_r1.filtered.rdata")
 ```
 
 ## Create a vcf file using identical filters to dartR
@@ -383,8 +416,8 @@ save(ak.filtered, file="cache/ak.filtered.rdata")
 This conversion is done using bash scripts in the `dart2vcf` directory. These scripts require a list of loci and individuals remaining after our dart filtering process so we export those here.
 
 ```{r}
-write.table(ak.filtered$loc.names,file = "dart2vcf/ak.filtered.loci",row.names = FALSE,quote = FALSE)
-write.table(ak.filtered$ind.names,file = "dart2vcf/ak.filtered.ind",row.names = FALSE,quote = FALSE,col.names = FALSE)
+write.table(ak.filtered$loc.names,file = "dart2vcf/ak_r1.filtered.loci",row.names = FALSE,quote = FALSE)
+write.table(ak.filtered$ind.names,file = "dart2vcf/ak_r1.filtered.ind",row.names = FALSE,quote = FALSE,col.names = FALSE)
 ```
 
 The dart2vcf script is then run against the Acropora kenti genome, aligning dart tags to the genome and using this to obtain genomic coordinates for all tags.
@@ -401,11 +434,14 @@ After performing the conversion we extract a subset corresponding to the same SN
 ``` bash
 # Sanitize loci because dartR changes them from the original
 #
-cat ak.pop.nm.loci | sed 's/-/_/' | sed 's:/:>:' | sed 's/-/:/' | sed 's/_/|F|0--/'  > tmp2.loci 
-
+cat ak_r1.filtered.loci | sed 's/-/_/' | sed 's:/:>:' | sed 's/-/:/' | sed 's/_/|F|0--/'  > tmp2.loci 
 bcftools filter -i "ID=@tmp2.loci" 8597_chr.vcf.gz -Oz > 8597_chr.1.vcf.gz
 
-# Retains 3801 of 4107 of the original loci. Some would not have mapped or passed conversion to vcf
+# Retains 4942 of 5325 of the original loci. Some would not have mapped or passed conversion to vcf
 
-bcftools view -S ak.pop.nm.ind 8597_chr.1.vcf.gz -Oz > ak.pop.nm.ind.vcf.gz
+
+bcftools view -c 1 -S ak_r1.filtered.ind 8597_chr.1.vcf.gz -Oz > ak_r1.pop.nm.ind.vcf.gz
+
+# This filter for individuals doesn't introduce any monomorphic loci so it stays the same at 4942
+
 ```

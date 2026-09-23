@@ -7,7 +7,7 @@ run_structure(){
 	mkdir -p nr.${rep}
 	cd nr.${rep}
 
-	structure -K ${k} -L 5309 -N 427  -m ../ak.mainparams.nr.txt -i ../ak.filtered.nr.str -e ../extraparams -o ak.structure.nr.k${k}.out
+	structure -K ${k} -L 5309 -N 427  -m ../ak_r1.mainparams.nr.txt -i ../ak_r1.filtered.nr.str -e ../extraparams -o ak.structure.nr.k${k}.out
 	#Extract ancestries
 	grep -A 428 'Inferred ancestry of individuals' ak.structure.nr.k${k}.out_f | sed 's/://'> ak.structure.nr.k${k}.out.anc.txt
 

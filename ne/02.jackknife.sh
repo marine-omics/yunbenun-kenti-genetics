@@ -6,9 +6,11 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 #SBATCH --time=2:00:00
-#SBATCH --array=1-403%200
+#SBATCH --array=1-404%200
 
 module load singularity/4.1.0-slurm
+
+mkdir -p jackknife
 
 args=$(sed "${SLURM_ARRAY_TASK_ID}q;d" grid_jk.tsv)
 

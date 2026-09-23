@@ -10,7 +10,7 @@ execute:
 ---
 
 ```{r, echo=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
 ```
 
 ```{r, echo=FALSE}
@@ -47,7 +47,10 @@ The path to the NE estimator binary can be obtained as follows (adjust if not us
 neest_path = paste(find.package("RLDNe"),"bin/Mac",sep = "/")
 ```
 
-Choice of loci and individuals for Ne estimation follows similar principles to that of genetic diversity estimates. Thus we can use the `ak.pop.nm` dataset as a starting point.
+Choice of loci and individuals for Ne estimation follows similar principles to that of genetic diversity estimates. Thus we can use the `ak.pop.nm` dataset as a starting point.  This is the cleaned dataset created in [03.population_structure](03.population_structure.md) in which; 
+
+- HWE filtering has been applied
+- Migrants and highly admixed individuals have been removed
 
 ```{r}
 # Loads ak.pop.nm
@@ -64,7 +67,7 @@ write.table(ak.pop.nm$loc.names,file = "dart2vcf/ak.pop.nm.loci",row.names = FAL
 write.table(ak.pop.nm$ind.names,file = "dart2vcf/ak.pop.nm.ind",row.names = FALSE,quote = FALSE,col.names = FALSE)
 ```
 
-A vcf with these loci and individuals is then created using the script `dart2vcf/06.filter3.sh`
+A vcf with these loci and individuals is then created using the script `dart2vcf/07.filter4.sh`
 
 ```{r, results='hide'}
 ak.chr <- dartR::gl.read.vcf("dart2vcf/ak.pop.nm.ind.vcf.gz", ind.metafile = "ind_metrics_SNP2_namefix.csv")
@@ -79,9 +82,7 @@ Estimation of Ne from LD information benefits from larger sample sizes, especial
 | no          | "HB", "HFB", "MB", "WB"        | 59          |
 | so          | "GB", "MR", "PB"               | 58          |
 | MS          | "BRR", "JB", "KR"              | 48          |
-| PI          | "SO", "LPB", "EP", "HaR", "WP" | 238         |
-
-Note WP is removed from the PI population because these individuals were slightly divergent in Fst analyses.
+| PI          | "SO", "LPB", "EP", "HaR", "WP" | 239         |
 
 ```{r, results='hide'}
 #wp.inds <- metadata %>% filter(pop=="WP") %>% pull(ID)
@@ -100,6 +101,7 @@ ak.chr.no.so <- gl.merge.pop(ak.chr.no.so, old=c("SO", "LPB", "EP", "HaR", "WP")
 
 ak.chr.no.so <- gl.filter.monomorphs(ak.chr.no.so)
 ak.chr.no.so <- gl.recalc.metrics(ak.chr.no.so)
+write_rds(ak.chr.no.so,"ne/ak.chr.no.so.rds")
 ```
 
 ```{r, results='hide'}
@@ -108,9 +110,13 @@ ak.chr.mi.adj <- gl.merge.pop(ak.chr.no.so, old=c("PI","MS"), new='adj')
 ak.chr.mi.adj <- gl.filter.monomorphs(ak.chr.mi.adj)
 ak.chr.mi.adj <- gl.recalc.metrics(ak.chr.mi.adj)
 write_rds(ak.chr.mi.adj,"ne/ak.chr.mi.adj.rds")
-```
 
-### Ne all merged units
+# And yet another where one of the sibs has been removed
+ak.chr.mi.adj.nosibs <- gl.drop.ind(ak.chr.mi.adj, "A31", recalc = TRUE, mono.rm = TRUE)
+ak.chr.mi.adj.nosibs <- gl.filter.monomorphs(ak.chr.mi.adj.nosibs)
+ak.chr.mi.adj.nosibs <- gl.recalc.metrics(ak.chr.mi.adj.nosibs)
+write_rds(ak.chr.mi.adj.nosibs,"ne/ak.chr.mi.adj.nosibs.rds")
+```
 
 ```{r}
 if ( !file.exists("cache/ne.chr.no.so.rdata") ){
@@ -122,7 +128,13 @@ if ( !file.exists("cache/ne.chr.no.so.rdata") ){
 }
 ```
 
-Ne estimates for Midshelf (almost offshore) reefs are astronomically high and upper confidence intervals are Inf (not estimable). This is probably due to a combination of low sample size and high Ne leading to poor estimates. Therefore we combine MS and PI into one population (Adjacent reefs).
+Ne estimates for Midshelf (almost offshore) reefs are astronomically high and upper confidence intervals are Inf (not estimable). This is probably due to a combination of low sample size and high Ne leading to poor estimates. Therefore we combine MS and PI into one population (Adjacent reefs). So now our populations are
+
+| Merged Unit | Sampling Locations             | Sample Size |
+|-------------|--------------------------------|-------------|
+| no          | "HB", "HFB", "MB", "WB"        | 59          |
+| so          | "GB", "MR", "PB"               | 58          |
+| ADJ          | "SO", "LPB", "EP", "HaR", "WP", "BRR", "JB", "KR" | 287         |
 
 ### Ne North and South Magnetic Island vs Adjacent reefs
 
@@ -137,13 +149,12 @@ if (!file.exists("cache/ne.chr.mi.adj.rdata")){
 }
 ```
 
-### Ne Magnetic Island (merged) vs Adjacent reefs
-
 ```{r, results='hide'}
 # And then make another dataset where adjacent sites are all merged
 ak.chr.mi.merged.adj <- gl.merge.pop(ak.chr.mi.adj, old=c("no","so"), new='MI')
 ak.chr.mi.merged.adj <- gl.filter.monomorphs(ak.chr.mi.merged.adj)
 ak.chr.mi.merged.adj <- gl.recalc.metrics(ak.chr.mi.merged.adj)
+write_rds(ak.chr.mi.merged.adj,"ne/ak.chr.mi.merged.adj.rds")
 ```
 
 ```{r}
@@ -182,23 +193,26 @@ ggplot(ne_results,aes(x=pop_name,y=ne,ymin=ne_min,ymax=ne_max)) +
   scale_color_manual(values = pop_colors) +
   labs(
     x = "",
-    y= "Ne"
+    y= "Effective Population Size"
   ) +
   scale_y_log10() + 
   theme_minimal() + 
   theme(legend.position = "None")
+ggsave("figures/ne.png",width = 5,height = 3)
 ```
+
+Running LDNe on the full dataset (all 404) individuals yields the following values. 
 
 ```{r}
 ne_results %>% knitr::kable()
 ```
 
-The NEEstimator software provides parametric and pseudo-jackknife methods to provide confidence intervals on Ne estimates. Since we have plenty of computational power we performed a full Jackknife on samples (removing each sample successively). This gives wider confidence intervals but it probably more realistic.  The Jackknife estimate required running LDNe 403 times (one for each sample).  Scripts to submit each sample as a standalone job are found in the [ne](ne) subdirectory.
+The NEEstimator software provides parametric and pseudo-jackknife methods to provide confidence intervals on Ne estimates. Since we have plenty of computational power we performed a full Jackknife on samples (removing each sample successively). This gives wider confidence intervals but is probably more realistic.  The Jackknife estimate required running LDNe 404 times (one for each sample).  Scripts to submit each sample as a standalone job are found in the [ne](ne) subdirectory.
 
 ```{r}
 read_ne <- function(path){
-  bn=basename(path) %>% str_remove(".rds")
-  read_rds(path)[[1]][,c(1,2)] %>% 
+  bn=basename(path) %>% stringr::str_remove(".rds")
+  read_rds(path)[[1]][,c(1,4)] %>% 
     add_column(input=bn)
 }
 
@@ -206,7 +220,7 @@ sample_sizes <- as.vector(table(ak.chr.mi.adj$pop))
 names(sample_sizes) <- c("adj","so","no")
 ```
 
-```{r}
+```{r, eval=FALSE}
 # This provides parameters for each job when running the jackknife
 data.frame(id=ak.chr.mi.adj$ind.names,pop=ak.chr.mi.adj$pop) %>% 
   mutate(iteration = row_number()) %>% 
@@ -214,40 +228,53 @@ data.frame(id=ak.chr.mi.adj$ind.names,pop=ak.chr.mi.adj$pop) %>%
 ```
 
 ```{r}
-ne_grid_jk <- list.files("ne/jackknife",pattern = "[0-9].rds",full.names = TRUE) %>% 
-  map(read_ne) %>% 
-  bind_rows() %>% 
-  separate(input,into = c("pop","rep"),sep="_") 
+if (file.exists("cache/ne_grid_jk.rds")){
+  ne_grid_jk <- read_rds("cache/ne_grid_jk.rds")
+  ne_jk_summary <- read_rds("cache/ne_jk_summary.rds")
+} else {
+  ne_grid_jk <- list.files("ne/jackknife/",pattern = "[0-9].rds",full.names = TRUE) %>% 
+    map(read_ne) %>% 
+    bind_rows() |> 
+    separate(input,into = c("pop","rep"),sep="_") 
 
-ne_jk_summary <- ne_grid_jk %>% 
-  filter(Statistic=="Estimated Ne^") %>% 
-  mutate(Ne=as.numeric(`Frequency 1`),rep=as.integer(rep)) %>% 
-  mutate(lgne = log10(Ne)) %>% # We log transform before applying the Jackknife because this produces better variance estimates
-  group_by(pop) %>% 
-  summarise(
-    jkmean = mean(lgne),
-    jkvar = (n()-1)*var(lgne),
-    jk_se=sqrt(jkvar),
-    jk_low=jkmean-1.96*jk_se,
-    jk_high = jkmean+1.96*jk_se
+  ne_jk_summary <- ne_grid_jk %>% 
+    filter(Statistic=="Estimated Ne^") %>% 
+    mutate(Ne=as.numeric(`Frequency 3`),rep=as.integer(rep)) %>% 
+    mutate(lgne = log10(Ne)) %>% # We log transform before applying the Jackknife because this produces better variance estimates
+    group_by(pop) %>% 
+    summarise(
+      jkmean = mean(lgne),
+      jkvar = (n()-1)*var(lgne),
+      jk_se=sqrt(jkvar),
+      jk_low=jkmean-1.96*jk_se,
+      jk_high = jkmean+1.96*jk_se
     ) 
-  
-  
+
+    write_rds(ne_grid_jk,"cache/ne_grid_jk.rds")
+    write_rds(ne_jk_summary,"cache/ne_jk_summary.rds")
+}
+
+
+
 ```
+
+The plots below show that estimated Ne, and r2 values were fairly consistent across runs but most highly variable for the larger ADJ population.
 
 ```{r}
 ne_grid_jk %>% 
   filter(Statistic %in% c("Estimated Ne^","OverAll r^2","Expected r^2 Sample")) %>%  
-  ggplot(aes(x=pop,y=as.numeric(`Frequency 1`))) + 
+  ggplot(aes(x=pop,y=as.numeric(`Frequency 3`))) + 
   geom_violin() +
   geom_point() + 
   scale_y_log10() + 
   facet_wrap(~Statistic,scales="free")
 ```
 
+We report the mean of these key statistics (Ne, r2 and expected r2).
+
 ```{r}
 ne_grid_jk %>% 
-  mutate(value=as.numeric(`Frequency 1`)) %>% 
+  mutate(value=as.numeric(`Frequency 3`)) %>% 
   filter(Statistic %in% c("Estimated Ne^","OverAll r^2","Expected r^2 Sample")) %>% 
   pivot_wider(names_from = Statistic, values_from = value) %>% 
   group_by(pop) %>% 
@@ -255,13 +282,8 @@ ne_grid_jk %>%
   
 ```
 
+And also report the upper and lower jackknife confidence intervals for ADJ, no and so.  
 
-```{r}
-ne_jk_summary %>% 
-ggplot(aes(x=pop,y=10^jkmean,ymin=10^jk_low,ymax=10^jk_high)) + 
-  geom_crossbar(aes(color = pop), linewidth = 1) + 
-  scale_y_log10()
-```
 ```{r}
 ne_jk_summary %>% 
   mutate(across(where(is.numeric), ~ 10^.x))

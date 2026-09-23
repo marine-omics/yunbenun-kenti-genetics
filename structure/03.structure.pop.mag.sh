@@ -5,7 +5,7 @@ run_structure(){
 
 	mkdir -p mag.${rep}
 	cd mag.${rep}
-	structure -K ${k} -L 2939 -N 117  -m ../ak.mainparams.pop.mag.nm.txt -i ../ak.pop.mag.nm.str -e ../extraparams -o ak.pop.mag.nm.k${k}.out
+	structure -K ${k} -L 2913 -N 117  -m ../ak.mainparams.pop.mag.nm.txt -i ../ak.pop.mag.nm.str -e ../extraparams -o ak.pop.mag.nm.k${k}.out
 	#Extract ancestries
 	grep -A 118 'Inferred ancestry of individuals' ak.pop.mag.nm.k${k}.out_f | sed 's/://'> ak.pop.mag.nm.k${k}.out.anc.txt
 

@@ -18,8 +18,8 @@ location_colors <- c(adj_cols,rev(mag_cols))
 names(location_colors) <- names(location_order)
 
 # Assign a certain colour to the clusters, so that cluster1 is consistently blue and cluster2 orange
-cluster_colors <- c("C2"="blue","C1"="orange")
-cluster_names <- c("C2"="Adjacent Reefs","C1"="Magnetic Island")
+cluster_colors <- c("C1"="blue","C2"="orange")
+cluster_names <- c("C1"="Adjacent Reefs","C2"="Yunbenun")
 
 maggie_sites <- c("HFB","WB","MB","HB","GB","PB","MR")
 maggie_no_sites <- c("HFB","WB","MB","HB")
@@ -37,4 +37,4 @@ pop_colors = c("ADJ" = gr_or[1],"MI"=gr_or[8],"NO"=gr_or[7],"SO"=gr_or[6])
 pop_names <- c("ADJ" = "Adjacent Reefs",
                "NO" = "North Magnetic Island",
                "SO" = "South Magnetic Island",
-               "MI" = "Magnetic Island")
+               "MI" = "Yunbenun")

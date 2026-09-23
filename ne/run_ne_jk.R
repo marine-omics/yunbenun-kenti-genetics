@@ -30,7 +30,7 @@ si <- subset_pop(ak.chr.mi.adj,remove_id,focal_pop)
 tf <- tempfile(fileext = ".txt")
 fd <- dirname(tf)
 
-si.ne <- dartR.popgen::gl.LDNe(si,outfile = basename(tf),outpath = fd, neest.path =  neest_path,critical = c(0, 0.05),plot.out = FALSE,pairing = "separate")
+si.ne <- dartR.popgen::gl.LDNe(si,outfile = basename(tf),outpath = fd, neest.path =  neest_path,critical = c(0, 0.01,0.02,0.05,0.1,0.2),plot.out = FALSE,pairing = "separate")
 
 write_rds(si.ne,file = paste("jackknife/",focal_pop,"_",iteration,".rds",collapse = "",sep = ""))
 

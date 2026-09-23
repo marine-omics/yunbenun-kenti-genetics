@@ -12,21 +12,41 @@ execute:
 
 ## Load Libraries
 
+```{r, results='hide', echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+
 ```{r, results='hide'}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
 library(dartRverse)
 library(tidyverse)
 library(ggraph)
 library(igraph)
+source("constants.R")
 ```
 
 ```{r, results='hide'}
-load("cache/ak.filtered.rdata")
+load("cache/ak_r1.filtered.rdata")
 ```
 
-## Identify close relatives/replicates
+## Identify replicate samples
 
-Accurate identification of clones and close relatives relies on estimates of population allele frequencies. From past studies we can assume that there is strong population structure dividing two main populations. We therefore perform an initial structure analysis to assign individuals to these populations for the purposes of calculating relatedness statistics.
+When sampling corals it is common to obtain a small number of samples from the same genotype.  This can happen through a few mechanisms.  One is colony fragmentation whereby a colony regrows from broken fragments.  The other is accidental resampling of the same colony which is possible in our dataset since we visited some sites multiple times.  When sampling in the Palms colonies were tagged, however resampling the same coral is possible if a tag was lost. 
+
+Our main goal here is to identify such replicated colonies. Accurate identification of clones and close relatives can be adversely affected by population structure, especially when using relatedness estimators that depend on population allele frequency. To mitigate this issue we used the `--relatedness2` option in vcftools which computes equation 9 in [@Manichaikul2010-ch].  This estimator should be robust to population structure because it does not depend on population-wide allele frequency calculations.  
+
+As a sanity check on this assumption we calculated relatedness using two approaches and compared them.  This confirmed that subsetting the data by population makes no difference to the relatedness2 calculation so we used the simplest approach (not creating population subsets) for our paper.
+
+##### Summary of approaches
+
+First approach.  Use `structure` to divide samples into two populations before calculating relatedness.
+Second approach.  Simply calculate relatedness on the entire dataset.
+
+The second approach shown here is what was used in the paper.  
+
+### First Approach (not used in the paper)
+
+Perform an initial structure analysis to assign individuals to one of two populations for the purposes of calculating relatedness statistics.
 
 ```{r, eval=FALSE}
 gl2structure(ak.filtered, ind.names = NULL, add.columns = NULL, ploidy = 2, export.marker.names = TRUE, outfile = "ak.filtered.str", outpath = "structure", verbose = NULL)
@@ -40,7 +60,7 @@ structure -K 2 -L 5275 -N 465  -m ak.mainparams.txt -i ak.filtered.str -o ak.str
 
 Read back the structure results and create tables assigning individuals to one of the two populations
 
-```{r}
+```{r, eval=FALSE}
 samples <- read_table("structure/ak.filtered.samples.txt",col_names = c("ID"))
 
 structure_ak_filtered <- read_table("structure/ak.structure.k2.out.anc.txt",col_names = c("X1", "Label","(%Miss)","C1","C2"),skip = 2) %>% 
@@ -64,6 +84,14 @@ vcftools --gzvcf ak.filtered.vcf.gz --relatedness2 --keep maggie_ind.txt --out a
 vcftools --gzvcf ak.filtered.vcf.gz --relatedness2 --keep palms_ind.txt --out ak.filtered.palms_ancestry
 ```
 
+### Second Approach
+
+Simply calculate relatedness on the entire dataset.  If the relatedness statistic is allele-frequency independent as we expect these should give nearly identical values. A slight difference is expected due to slightly different numbers of SNPs between datasets which arises
+
+```bash
+vcftools --gzvcf ak_r1.pop.nm.ind.vcf.gz --relatedness2 --out ak.filtered.all
+```
+
 ```{r}
 palms_rel <- read_tsv("relatedness/ak.filtered.palms_ancestry.relatedness2") %>% 
   filter(INDV1 != INDV2) %>% add_column(pop="palms")
@@ -71,37 +99,99 @@ palms_rel <- read_tsv("relatedness/ak.filtered.palms_ancestry.relatedness2") %>%
 maggie_rel <- read_tsv("relatedness/ak.filtered.maggie_ancestry.relatedness2") %>% 
   filter(INDV1 != INDV2) %>% add_column(pop="maggie")
 
-all_rel <- rbind(palms_rel,maggie_rel)
+both_rel <- read_tsv("relatedness/ak.filtered.all.relatedness2") |> 
+  filter(INDV1 != INDV2) %>% add_column(pop="both")
+
+all_rel <- rbind(palms_rel,maggie_rel,both_rel)
 ```
 
-Relatedness numbers don't conform to ideal expectations. There are a lot of negative values which is a known consequence of estimating allele frequencies from a sample, particularly if the sample includes some family structure or inbreeding. In such cases unrelated individuals are expected to have a negative relatedness [@Wang2014-mm]. Nevertheless we can see a main peak around 0 which represents the bulk of individuals which are probably unrelated. Highly related individuals and potential clones show up as an additional peak above relatedness values around 0.25. In both plots this peak is quite distinct from the bulk of sample pairs.
+Check relatedness agreement between datasets where pops are separated and where everything is together.  This confirms that the values are identical.  Therefore we will proceed with the second approach.
 
 ```{r}
-all_rel %>% 
-  ggplot(aes(x=RELATEDNESS_PHI)) + geom_histogram(aes(fill=pop),binwidth = 0.05) + scale_y_log10() + facet_wrap(~pop)
+all_rel |> 
+  mutate(pair_type = case_when(
+    pop %in% c("palms","maggie") ~ "separate",
+    pop == "both" ~ "together",
+    .default=NA
+  )) |> 
+  select(INDV1,INDV2,RELATEDNESS_PHI,pair_type) |> 
+  pivot_wider(values_from = RELATEDNESS_PHI,names_from = pair_type) |> 
+  ggplot(aes(x=separate,y=together)) + 
+  geom_point()
 ```
 
-Next we plot relationships among highly related individuals as a graph. This is because not all such highly related groups are pairs. Sometimes there are more than 2 individuals within a clonal cluster. We need to identify these clusters so that we can pick one representative from each
+## Final calculation including known replicates
+
+Now that we know that population substructure has no effect we calculated relatedness on our entire dataset including the 16 individuals known to have been duplicated. 
+
+```bash
+vcftools --gzvcf ak_r1.pop.nm.ind.vcf.gz --relatedness2 --out ak_r1.filtered.all
+```
 
 ```{r}
-rel_connected <- all_rel %>% 
-  filter(RELATEDNESS_PHI>0.25)
+all_rel_r1 <- read_tsv("relatedness/ak_r1.filtered.all.relatedness2") |> 
+    filter(INDV1 != INDV2) 
+```
+
+A histogram of relatedness reveals four peaks.  One at about -1 which is probably due to cross population pairs (extremely unrelated), another just below 0 which is probably unrelated individuals within population and then another peak at around 0.2 (family members) and then 0.5 (clones/replicates).
+
+```{r}
+all_rel_r1 %>% 
+  ggplot(aes(x=RELATEDNESS_PHI)) + geom_histogram(binwidth = 0.05) 
+```
+Highly related individuals only form a tiny fraction of the dataset so to see them we need to show the data on a log scale.  This shows that the vast majority of pairs with high relatedness have values between 0.35 and 0.5 which is the expected range for clones or duplicates. Of these most have phi>0.4 and there is only one borderline pair at 0.36.
+
+This also confirms that all 16 known duplicate pairs are flagged as duplicates via their relatedness phi values.
+
+```{r}
+load("cache/metadata.rdata")
+
+dup_pairs <- read_tsv("raw_data/dup_pairs.tsv")
+dup_pairs[16,2] <- "WB_36" # Use sanitised name
+
+dup_keys <- with(dup_pairs, paste(pmin(A, B), pmax(A, B)))
+
+all_rel_r1_loc <- all_rel_r1 %>% 
+  mutate(dup_key = paste(pmin(INDV1, INDV2), pmax(INDV1, INDV2)))  |> 
+  mutate(known_duplicate = dup_key %in% dup_keys) |>
+  left_join(metadata |> select(ID,pop), by = c("INDV1"="ID")) |> rename(pop1=pop) |> 
+  left_join(metadata |> select(ID,pop), by = c("INDV2"="ID")) |> rename(pop2=pop) |> 
+  mutate(location_match = (pop1==pop2)) 
+
+all_rel_r1_loc |> 
+    ggplot(aes(x=RELATEDNESS_PHI)) + geom_histogram(aes(fill=known_duplicate),binwidth = 0.01) + 
+  geom_vline(aes(xintercept = 0.353)) +
+  scale_y_log10() +
+  theme_bw() + ylab("Number of Pairs") +
+  theme(legend.position = "bottom") + 
+  labs(fill = "Known Duplicate")
+
+ggsave("figures/figure_s9.png", width = 10,height = 7)
+```
+
+
+
+Next we plot relationships among duplicates as a graph. This is because not all such highly related groups are pairs. Sometimes there are more than 2 individuals within a clonal cluster. We need to identify these clusters so that we can pick one representative from each
+
+```{r}
+rel_connected <- all_rel_r1 |>  
+  filter(RELATEDNESS_PHI>0.353) 
 
 rel_graph <- graph_from_data_frame(rel_connected)
 ggraph(rel_graph) + 
   geom_edge_link() + 
   geom_node_point(color="red") + 
-  geom_node_text(aes(label=name),size=1,repel = TRUE)
+  geom_node_text(aes(label=name),size=2,repel = TRUE)
 ```
 
-This gives a total of 96 individuals in 32 clusters. In order to pick a representative from each of these clusters we need to calculate missingness for all samples which we do using vcftools
+This gives a total of 166 individuals in 40 clusters. In order to pick a representative from each of these clusters we need to calculate missingness for all samples which we do using vcftools
 
 ``` bash
-vcftools --gzvcf ak.filtered.vcf.gz --missing-indv --out ak.filtered
+vcftools --gzvcf ak_r1.pop.nm.ind.vcf.gz --missing-indv --out ak_r1.filtered
 ```
 
 ```{r}
-ak.filtered.imiss <- read_tsv("relatedness/ak.filtered.imiss")
+ak.filtered.imiss <- read_tsv("relatedness/ak_r1.filtered.imiss")
 ```
 
 Joining missingness information with cluster membership allows us to identify representatives of each cluster and then make a list of all other individuals which will need to be removed from further analysis
@@ -118,8 +208,40 @@ excluded_samples <- setdiff(rel_connected$INDV1,representative_samples)
 
 excluded_samples %>% 
   as.data.frame() %>% 
-  write_tsv(file = "relatedness/excluded_relatives.tsv",col_names = FALSE)
+  write_tsv(file = "relatedness/excluded_relatives_r1.tsv",col_names = FALSE)
 ```
+
+We also make a separate list of individuals representing close kin that we might want to remove from specific analyses.  These are used later to test the impact of inclusion/exclusion of related individuals on Ne estimates
+
+```{r}
+excluded_kin_data <- all_rel_r1_loc |> 
+  filter(RELATEDNESS_PHI>(1/(2^(9/2)))) |> 
+  filter(RELATEDNESS_PHI<0.35) |> 
+  select(INDV1,INDV2,pop1,pop2,location_match,dup_key) |> 
+  left_join(ak.filtered.imiss,by=c("INDV1"="INDV")) |> 
+  group_by(dup_key) |> 
+  slice_max(F_MISS,n=1,with_ties = FALSE)
+
+# Which site is each close-kin pair drawn from? The INDV1/INDV2 ordering is
+# arbitrary, so sort the site codes to avoid splitting one site combination
+# across two rows
+excluded_kin_data |> 
+  ungroup() |> 
+  mutate(site_pair = paste(location_names[pmin(pop1,pop2)],
+                           location_names[pmax(pop1,pop2)],
+                           sep = " - ")) |> 
+  count(site_pair, location_match, name = "n_pairs") |> 
+  arrange(desc(n_pairs))
+
+excluded_kin <- excluded_kin_data |> 
+  pull(INDV1) 
+
+as.data.frame(excluded_kin) |> 
+  write_tsv(file = "relatedness/excluded_kin.tsv")
+```
+
+These close kin are not spread evenly across the sampling design; 11 of the 13 pairs fall entirely within the South Yunbenun sites (Geoffrey Bay, Picnic Bay and Middle Reef). Though not visible in this table some individuals are involved in multiple pairings.  Only 8 individuals need to be removed to eliminate all close-kin relationships. Of these 7 are from PB / Geoffrey Bay and 1 is from South Orpheus.
+
 
 ## Create new genlight object with replicates/clones removed
 
@@ -132,11 +254,7 @@ nInd(ak.filtered.nr)
 nLoc(ak.filtered.nr)
 ```
 
-```{r}
-gl.smearplot(ak.filtered.nr)
-```
-
-## Remove missing loci
+## Remove missing loci (no effect)
 
 A DArT dataset will not have individuals for which the calls are scored as missing (NA) across all loci, but such individuals may sneak in to the dataset when loci are deleted. Retaining individual or loci with all NAs can cause issues for several functions
 
@@ -159,5 +277,5 @@ table(pop(ak.pop))
 ```
 
 ```{r}
-save(ak.filtered.nr, file="cache/ak.filtered.nr.rdata")
+save(ak.filtered.nr, file="cache/ak_r1.filtered.nr.rdata")
 ```

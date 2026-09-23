@@ -1,5 +1,5 @@
 #!/bin/bash --login
-#SBATCH --account=pawsey1169
+#SBATCH --account=pawsey1088
 #SBATCH --job-name=fst
 #SBATCH --partition=work
 #SBATCH --ntasks=1
